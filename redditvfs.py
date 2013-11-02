@@ -13,6 +13,16 @@ import json
 
 fuse.fuse_python_api = (0, 2)
 
+def sanitize_filepath(path):
+    """
+    Converts provided path to legal UNIX filepaths.
+    """
+    # '/' is illegal
+    path = path.replace('/',' ')
+    # Direntry() doesn't seem to like non-ascii
+    path = path.encode('ascii', 'ignore')
+    return path
+
 def redditapi(url):
     """
     talks to reddit via url, returns dictionary of response
