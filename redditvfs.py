@@ -10,6 +10,9 @@ import stat
 import time
 import urllib2
 import json
+import praw
+import ConfigParser
+import sys
 
 fuse.fuse_python_api = (0, 2)
 
@@ -61,6 +64,33 @@ class redditvfs(fuse.Fuse):
 
 
 if __name__ == '__main__':
+    # Create a reddit object from praw
+    reddit = praw.Reddit(user_agent='redditvfs')
+
+    # Login only if a configuration file is present
+    if '-c' in sys.argv:
+        # User wants to use the config file, create the parser
+        config = ConfigParser.RawConfigParser(allow_no_value=True)
+
+        # Check for default login
+        try:
+            config.readfp(open('~/.redditvfs.conf'))
+            try:
+                # Attempt to retrieve the logih information from
+                username = config.get('login', 'username')
+                password = config.get('login', 'password')
+
+                reddit.login(username=username, password=password)
+
+                print 'Logged in as: ' + username
+            except Exception, e:
+                # Failed to log in
+                print 'Failed to login.'
+                pass
+        except Exception, e:
+            # Configuration file not present, ignore
+            pass
+
     fs = redditvfs()
     fs.parse(errex=1)
     fs.main()

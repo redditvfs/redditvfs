@@ -1,2 +1,3 @@
-consumerKey=<put in key>
-consumerSecret=<put in secret here>
+[login]
+username =
+password =
