@@ -53,20 +53,14 @@ Each directory is named after the subreddit it contains.
 Each subreddit directory contains multiple 'post directories.' Each post directory is named from the post it represents and a unique ID. Inside the directory there is
 
         contents        -holds the contents of the post, be it a self-post or a link. 
-        votes           -when read gives the number of upvotes and downvotes the post has. You can write a 1 (upvote), 0 (no vote) or -1 (downvote) to the file to vote. 
+        votes           -when read gives the number of upvotes and downvotes the post has. 
+                         You can write a 1 (upvote), 0 (no vote) or -1 (downvote) to the file to vote. 
         flat            -Holds the contents of the post and all children comments. 
         <username>      -symlink to the user profile of the user who made the post.
 
 The directory also contains several 'comment directories.'
 
-Each comment directory corrosponds to the child comments. A comment directory can contain comment directories. Each comment directories contains
-
-        contents
-        votes
-        flat
-        <username>
-
-A comment directory also contains all children comment directories.
+Each comment directory corrosponds to the child comments. A comment directory has the same layout as a post directory, and can also contain comment directories of its own. The file `contents` instead contains the comment.
 
 To make a post, you can make a file in the subreddit directory, with the name of the file being the title, and the contents of the file being the post contents. Single line posts are considered links, multi-line files are self posts.
 
