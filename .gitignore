@@ -34,3 +34,9 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+
+# Ignore backups of files created by editors
+*~
+
+# Ignore the config file
+redditvfs.config
