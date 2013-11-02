@@ -78,6 +78,9 @@ class redditvfs(fuse.Fuse):
 
 
 def login_get_username(config):
+    """
+    returns the username of the user to login
+    """
     try:
         username = config.get('login', 'username')
     except Exception, e:
@@ -88,6 +91,9 @@ def login_get_username(config):
 
 
 def login_get_password(config):
+    """
+    returns the password of the user to login
+    """
     try:
         password = config.get('login', 'password')
     except Exception, e:
