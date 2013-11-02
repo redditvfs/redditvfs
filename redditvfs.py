@@ -13,6 +13,7 @@ import json
 import praw
 import ConfigParser
 import sys
+import getpass
 
 fuse.fuse_python_api = (0, 2)
 
@@ -62,6 +63,23 @@ class redditvfs(fuse.Fuse):
                 posttitle = str(post['data']['title']).replace('/',' ')
                 yield fuse.Direntry(posttitle)
 
+def login_get_username(config):
+    try:
+        username = config.get('login', 'username')
+    except Exception, e:
+        # Prompt for username
+        username = raw_input("Username: ")
+        pass
+    return username
+
+def login_get_password(config):
+    try:
+        password = config.get('login', 'password')
+    except Exception, e:
+        # Prompt for password
+        password = getpass.getpass()
+        pass
+    return password
 
 if __name__ == '__main__':
     # Create a reddit object from praw
@@ -77,23 +95,18 @@ if __name__ == '__main__':
 
         # Check for default login
         try:
-            config.readfp(open('~/.redditvfs.conf'))
+            config.read('~/.redditvfs.conf')
+        except Exception, e:
+            pass
+        finally:
+            username = login_get_username(config = config)
+            password = login_get_password(config = config)
             try:
-                # Attempt to retrieve the logih information from
-                username = config.get('login', 'username')
-                password = config.get('login', 'password')
-
                 reddit.login(username=username, password=password)
-
                 print 'Logged in as: ' + username
             except Exception, e:
-                # Failed to log in
-                print 'Failed to login.'
-                pass
-        except Exception, e:
-            # Configuration file not present, ignore
-            print '~/.redditvfs.conf not found.'
-            pass
+                print e
+                print 'Failed to login'
 
     fs = redditvfs()
     fs.parse(errex=1)
