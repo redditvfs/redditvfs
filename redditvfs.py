@@ -69,6 +69,9 @@ if __name__ == '__main__':
 
     # Login only if a configuration file is present
     if '-c' in sys.argv:
+        # Remove '-c' from sys.argv
+        sys.argv.remove('-c')
+
         # User wants to use the config file, create the parser
         config = ConfigParser.RawConfigParser(allow_no_value=True)
 
@@ -89,6 +92,7 @@ if __name__ == '__main__':
                 pass
         except Exception, e:
             # Configuration file not present, ignore
+            print '~/.redditvfs.conf not found.'
             pass
 
     fs = redditvfs()
