@@ -11,6 +11,7 @@ import time
 import praw
 import getpass
 import ConfigParser
+import sys
 
 fuse.fuse_python_api = (0, 2)
 
