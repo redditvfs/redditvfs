@@ -17,7 +17,7 @@ def sanitize_filepath(path):
     Converts provided path to legal UNIX filepaths.
     """
     # '/' is illegal
-    path = path.replace('/',' ')
+    path = path.replace('/','_')
     # Direntry() doesn't seem to like non-ascii
     path = path.encode('ascii', 'ignore')
     return path
@@ -30,26 +30,46 @@ class redditvfs(fuse.Fuse):
         """
         returns stat info for file, such as permissions and access times.
         """
-        # this should act differently for different files, but here's a sane
-        # default so things just work:
+        # default nlink and time info
         st = fuse.Stat()
         st.st_nlink = 2
         st.st_atime = int(time.time())
         st.st_mtime = st.st_atime
         st.st_ctime = st.st_atime
-        if path == '/' or path == '/.' or path == '/..':
-            st.st_mode = stat.S_IFDIR | 0755
+        # set if filetype and permissions
+        if path.split('/')[-1] == '.' or path.split('/')[-1] == '..':
+            st.st_mode = stat.S_IFDIR | 0444
+        elif path in ['/', '/u', '/r' ]:
+            st.st_mode = stat.S_IFDIR | 0444
         else:
-            st.st_mode = stat.S_IFREG | 0700
+            st.st_mode = stat.S_IFREG | 0444
         return st
 
     def readdir(self, path, offset):
         """
         returns a list of directories in requested path
         """
-        # add "." and ".." -- all directories have these
+
+        # Every directory has '.' and '..'
         yield fuse.Direntry('.')
         yield fuse.Direntry('..')
+
+        # the root just has high-level items:
+        # - /r (for subreddits)
+        # - /u (for users)
+        if path == '/':
+            yield fuse.Direntry('u')
+            yield fuse.Direntry('r')
+        elif path == '/r':
+            # if user is logged in, populate with get_my_subreddits
+            # otherwise, default to frontpage
+            # TODO: check if logged in
+            # TODO: figure out how to get non-logged-in default subreddits,
+            # falling back to get_popular_subreddits
+            r = praw.Reddit(user_agent="redditvfs")
+            for subreddit in r.get_popular_subreddits():
+                dirname = sanitize_filepath(subreddit.url.split('/')[2])
+                yield fuse.Direntry(dirname)
 
 if __name__ == '__main__':
     fs = redditvfs()
