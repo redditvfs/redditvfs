@@ -5,7 +5,7 @@ Access reddit through a virtual file system.
 
 Description
 -----------
-**reddivfs* is a FUSE-based filesystem that allows the user to read, post, and explore the content aggregation site reddit by maniplulating files and directories. The goal is to provide feature-complete access to the website via your file browser of choice.
+**reddivfs** is a FUSE-based filesystem that allows the user to read, post, and explore the content aggregation site reddit by maniplulating files and directories. The goal is to provide feature-complete access to the website via your file browser of choice.
 
 Setup
 -----
