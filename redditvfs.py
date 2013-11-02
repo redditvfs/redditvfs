@@ -8,8 +8,7 @@ import errno
 import fuse
 import stat
 import time
-import urllib2
-import json
+import praw
 
 fuse.fuse_python_api = (0, 2)
 
@@ -22,14 +21,6 @@ def sanitize_filepath(path):
     # Direntry() doesn't seem to like non-ascii
     path = path.encode('ascii', 'ignore')
     return path
-
-def redditapi(url):
-    """
-    talks to reddit via url, returns dictionary of response
-    should handle rate limiting and caching
-    """
-    response = urllib2.urlopen(url)
-    return json.load(response)
 
 class redditvfs(fuse.Fuse):
     def __init__(self, *args, **kw):
@@ -59,16 +50,6 @@ class redditvfs(fuse.Fuse):
         # add "." and ".." -- all directories have these
         yield fuse.Direntry('.')
         yield fuse.Direntry('..')
-        if path == "/":
-            # test file
-            yield fuse.Direntry('hello_world')
-            # current posts in r/osu
-            data = redditapi('http://reddit.com/r/osu/hot.json')
-            for post in data['data']['children']:
-                # '/' is illegal in UNIX filenames
-                posttitle = str(post['data']['title']).replace('/',' ')
-                yield fuse.Direntry(posttitle)
-
 
 if __name__ == '__main__':
     fs = redditvfs()
