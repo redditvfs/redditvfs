@@ -12,6 +12,8 @@ import praw
 import getpass
 import ConfigParser
 import sys
+import urllib2
+import format
 
 fuse.fuse_python_api = (0, 2)
 
@@ -69,7 +71,6 @@ class redditvfs(fuse.Fuse):
         # Every directory has '.' and '..'
         yield fuse.Direntry('.')
         yield fuse.Direntry('..')
-        r = praw.Reddit(user_agent='redditvfs')
 
         if path == '/':
             # top-level directory
@@ -88,7 +89,7 @@ class redditvfs(fuse.Fuse):
             # posts in subreddits
             subreddit = path.split('/')[2]
             # TODO: maybe not hardcode limit?
-            for post in r.get_subreddit(subreddit).get_hot(limit=10):
+            for post in reddit.get_subreddit(subreddit).get_hot(limit=10):
                 filename = sanitize_filepath(sanitize_filepath(post.title)
                         + ' ' + post.id)
                 yield fuse.Direntry(filename)
@@ -103,10 +104,42 @@ class redditvfs(fuse.Fuse):
                 post_id = path.split(' ')[-1]
             else:
                 post_id = path.split('/')[-1]
-            post = r.get_submission(submission_id = post_id)
+            post = reddit.get_submission(submission_id = post_id)
             if post.thumbnail != "":
                 # there is a thumbnail
                 yield fuse.Direntry('thumbnail')
+
+    def read(self, path, length, offset, fh=None):
+        path_split = path.split('/')
+        path_len = len(path_split)
+
+        if path_split[1] == 'r' and path_len >= 4:
+            # Get the post or comment
+            post_id = path_split[-2].split(' ')[-1]
+            post = reddit.get_submission(submission_id = post_id)
+
+            if path_split[-1] == 'contents':
+                # TODO API call for contents
+                pass
+            elif path_split[-1] == 'votes':
+                # TODO votes information
+                pass
+            elif path_split[-1] == 'flat':
+                return format.format_submission(post)
+            elif path_split[-1] == 'thumbnail' and post.thumbnail != '' and post.thumbnail !='self':
+                # TODO Broken does not work. Fix soons
+                f = urllib2.urlopen(post.thumbnail);
+                if f.getcode() == 200:
+                    print 'code 200'
+                    read = str(f.read())
+                    print read
+                    # Only return if the file was read
+                    return read.encode('ascii')
+        if path.split('/')[1] == 'u':
+            # TODO user handling
+            pass
+
+        return -errno.ENOSYS
 
 
 def login_get_username(config):
