@@ -14,15 +14,17 @@ import ConfigParser
 
 fuse.fuse_python_api = (0, 2)
 
+
 def sanitize_filepath(path):
     """
     Converts provided path to legal UNIX filepaths.
     """
     # '/' is illegal
-    path = path.replace('/','_')
+    path = path.replace('/', '_')
     # Direntry() doesn't seem to like non-ascii
     path = path.encode('ascii', 'ignore')
     return path
+
 
 class redditvfs(fuse.Fuse):
     def __init__(self, *args, **kw):
@@ -41,7 +43,7 @@ class redditvfs(fuse.Fuse):
         # set if filetype and permissions
         if path.split('/')[-1] == '.' or path.split('/')[-1] == '..':
             st.st_mode = stat.S_IFDIR | 0444
-        elif path in ['/', '/u', '/r' ]:
+        elif path in ['/', '/u', '/r']:
             st.st_mode = stat.S_IFDIR | 0444
         else:
             st.st_mode = stat.S_IFREG | 0444
@@ -73,6 +75,7 @@ class redditvfs(fuse.Fuse):
                 dirname = sanitize_filepath(subreddit.url.split('/')[2])
                 yield fuse.Direntry(dirname)
 
+
 def login_get_username(config):
     try:
         username = config.get('login', 'username')
@@ -82,6 +85,7 @@ def login_get_username(config):
         pass
     return username
 
+
 def login_get_password(config):
     try:
         password = config.get('login', 'password')
@@ -90,6 +94,7 @@ def login_get_password(config):
         password = getpass.getpass()
         pass
     return password
+
 
 if __name__ == '__main__':
     # Create a reddit object from praw
@@ -109,8 +114,8 @@ if __name__ == '__main__':
         except Exception, e:
             pass
         finally:
-            username = login_get_username(config = config)
-            password = login_get_password(config = config)
+            username = login_get_username(config=config)
+            password = login_get_password(config=config)
             try:
                 reddit.login(username=username, password=password)
                 print 'Logged in as: ' + username
