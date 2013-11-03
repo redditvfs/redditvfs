@@ -95,6 +95,25 @@ class redditvfs(fuse.Fuse):
         else:
             # everything else is a file
             st.st_mode = stat.S_IFREG | 0444
+
+            if path_split[1] == 'r':
+                # Get the post or comment
+                post_id = path_split[-2].split(' ')[-1]
+                post = reddit.get_submission(submission_id=post_id)
+
+                if path_split[-1] == 'content':
+                    # TODO API call for contents
+                    formatted = ''
+                elif path_split[-1] == 'votes':
+                    # TODO votes information
+                    formatted = ''
+                elif path_split[-1] == 'flat':
+                    formatted = format.format_submission(post)
+                elif path_split[-1] == 'thumbnail' and post.thumbnail != '' and \
+                        post.thumbnail != 'self':
+                    formatted = '' # TODO: implement thumbnails
+                formatted.encode('ascii', 'ignore')
+                st.st_size = len(formatted)
         return st
 
     def readdir(self, path, offset):
@@ -195,7 +214,7 @@ class redditvfs(fuse.Fuse):
             post_id = path_split[-2].split(' ')[-1]
             post = reddit.get_submission(submission_id=post_id)
 
-            if path_split[-1] == 'contents':
+            if path_split[-1] == 'content':
                 # TODO API call for contents
                 pass
             elif path_split[-1] == 'votes':
@@ -204,7 +223,6 @@ class redditvfs(fuse.Fuse):
             elif path_split[-1] == 'flat':
                 formatted = format.format_submission(post)
                 formatted = formatted.encode('ascii', 'ignore')
-                print formatted[offset:offset+size]
                 return formatted[offset:offset+size]
             elif path_split[-1] == 'thumbnail' and post.thumbnail != '' and \
                     post.thumbnail != 'self':
