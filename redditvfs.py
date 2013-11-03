@@ -28,8 +28,11 @@ def sanitize_filepath(path):
 
 
 class redditvfs(fuse.Fuse):
-    def __init__(self, *args, **kw):
+    def __init__(self, reddit=None, *args, **kw):
         fuse.Fuse.__init__(self, *args, **kw)
+
+        if reddit is None:
+            raise Exception('reddit must be set')
 
     def getattr(self, path):
         """
@@ -73,8 +76,12 @@ class redditvfs(fuse.Fuse):
             yield fuse.Direntry('u')
             yield fuse.Direntry('r')
         elif path == '/r':
-            # list of subreddits
-            for subreddit in r.get_popular_subreddits():
+            # if user is logged in, populate with get_my_subreddits
+            # otherwise, default to frontpage
+            # TODO: check if logged in
+            # TODO: figure out how to get non-logged-in default subreddits,
+            # falling back to get_popular_subreddits
+            for subreddit in reddit.get_popular_subreddits():
                 dirname = sanitize_filepath(subreddit.url.split('/')[2])
                 yield fuse.Direntry(dirname)
         elif len(path.split('/')) == 3 and path.split('/')[1] == 'r':
@@ -93,6 +100,9 @@ class redditvfs(fuse.Fuse):
 
 
 def login_get_username(config):
+    """
+    returns the username of the user to login
+    """
     try:
         username = config.get('login', 'username')
     except Exception, e:
@@ -103,6 +113,9 @@ def login_get_username(config):
 
 
 def login_get_password(config):
+    """
+    returns the password of the user to login
+    """
     try:
         password = config.get('login', 'password')
     except Exception, e:
@@ -139,6 +152,6 @@ if __name__ == '__main__':
                 print e
                 print 'Failed to login'
 
-    fs = redditvfs()
+    fs = redditvfs(reddit=reddit)
     fs.parse(errex=1)
     fs.main()
