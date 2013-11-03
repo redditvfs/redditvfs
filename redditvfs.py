@@ -118,7 +118,7 @@ class redditvfs(fuse.Fuse):
                 st.st_mode = stat.S_IFLNK | 0444
             else:
                 st.st_mode = stat.S_IFDIR | 0444
-        elif (path_split[1] == 'u' and (path_len == 3 or path_len == 4)):
+        elif (path_split[1] == 'u' and (path_len >= 3 or path_len <= 5)):
             st.st_mode = stat.S_IFDIR | 0444    
         elif (path_split[1] == 'r' and path_len > 4 and path_split[-1] in
                 ['thumbnail', 'flat', 'votes', 'content']):
@@ -243,19 +243,20 @@ class redditvfs(fuse.Fuse):
                 yield fuse.Direntry('Overview')
                 yield fuse.Direntry('Submitted')
                 yield fuse.Direntry('Comments')
-                yield fuse.Direntry('Gilded')
-#            if path_len >= 4:
-#                if path_split[3] == 'Overview':
-#                    
-#                elif path_split[3] == 'Submitted':
-#                    user = r.get_redditor(path_split[2])
-#                    for c in enumerate(user.get_submitted(limit=10)):
-#                        yield fuse.Direntry(
-#
-#                elif path_split[3] == 'Comments':
-#                   
-#                elif path_split[3] == 'Gilded':
-                    
+            if path_len >= 4:
+                user = reddit.get_redditor(path_split[2])
+                if path_split[3] == 'Overview':
+                    for c in enumerate(user.get_overview(limit=10)):
+                        yield fuse.Direntry(sanitize_filepath(c[1].body[0:pathmax]
+                            + ' ' + c[1].id))
+                elif path_split[3] == 'Submitted':
+                    for c in enumerate(user.get_submitted(limit=10)):
+                        yield fuse.Direntry(sanitize_filepath(c[1].body[0:pathmax]
+                            + ' ' + c[1].id))
+                elif path_split[3] == 'Comments':
+                    for c in enumerate(user.get_comments(limit=10)):
+                        yield fuse.Direntry(sanitize_filepath(c[1].body[0:pathmax]
+                            + ' ' + c[1].id))
 
     def read(self, path, size, offset, fh=None):
         path_split = path.split('/')
