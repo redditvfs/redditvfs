@@ -302,18 +302,21 @@ class redditvfs(fuse.Fuse):
                 user = reddit.get_redditor(path_split[2])
                 if path_split[3] == 'Overview':
                     for c in enumerate(user.get_overview(limit=10)):
-                        c_part = c[1].body[0:pathmax] + ' ' +\
-                            c[1].submission.id
-                        yield fuse.Direntry(sanitize_filepath(c_part))
+                        if type(c[1]) == praw.objects.Submission:
+                            c_part = c[1].title[0:pathmax] + ' ' + c[1].id
+                            yield fuse.Direntry(sanitize_filepath(c_part))
+                        if type(c[1]) == praw.objects.Comment:
+                            c_part = c[1].body[0:pathmax] + ' ' +\
+                                c[1].submission.id
+                            yield fuse.Direntry(sanitize_filepath(c_part))
                 elif path_split[3] == 'Submitted':
                     for c in enumerate(user.get_submitted(limit=10)):
-                        c_part = c[1].body[0:pathmax] + ' ' +\
-                            c[1].submission().id
+                        c_part = c[1].title[0:pathmax] + ' ' + c[1].id
                         yield fuse.Direntry(sanitize_filepath(c_part))
                 elif path_split[3] == 'Comments':
                     for c in enumerate(user.get_comments(limit=10)):
                         c_part = c[1].body[0:pathmax] + ' ' +\
-                            c[1].submission().id
+                            c[1].submission.id
                         yield fuse.Direntry(sanitize_filepath(c_part))
 
     def read(self, path, size, offset, fh=None):
