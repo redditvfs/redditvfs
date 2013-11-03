@@ -14,6 +14,7 @@ import ConfigParser
 import sys
 import urllib2
 import format
+import json
 
 fuse.fuse_python_api = (0, 2)
 
@@ -190,17 +191,21 @@ class redditvfs(fuse.Fuse):
                 numdots -= 1
             return dots + 'u/' + path.split('/')[-1:][0][11:-1]
         if path.split('/')[1] == 'u' and len(path.split('/')) == 5:
-            numdots -= 2
+            numdots -=2
             while (numdots > 0):
                 dots += '../'
                 numdots -= 1
             comment_id = path.split(' ')[-1]
-            test = 'http://redd.it/'+comment_id
-            sub = urllib2.urlopen(str(test))
-            sub = sub.geturl()
+            sub = str('http://reddit.com/comments/'+comment_id+'.json')
+            submi = urllib2.urlopen(sub)
+            time.sleep(1)
+            z= json.load(submi)
+            subname=z[0]['data']['children'][0]['data']['subreddit']
+            filename=z[0]
             sub = sub.split('/')
-            return dots + 'r/' + sub[4] + '/' + sanitize_filepath(sub[7]) +\
-                '/' + sub[6]
+            ret = dots + 'r/' + subname + '/'+ sub[4][:-5]
+            ret = ret.encode('ascii', 'ignore')
+            return str(ret)
 
     def readdir(self, path, offset):
         """
@@ -416,7 +421,7 @@ class redditvfs(fuse.Fuse):
         if path_split[1] == 'r' and path_len == 4 and\
                 path_split[-1] == 'post':
             buf_split = buf.split('\n')
-            title = buf_split[0]
+            title = bUf_split[0]
             if len(buf_split) > 2:
                 # Self-post
                 text = '\n'.join(buf_split[1:])
@@ -528,6 +533,6 @@ if __name__ == '__main__':
     else:
         username = None
 
-    fs = redditvfs(reddit=reddit, username=username)
+    fs = redditvfs(reddit=reddit, username=username, dash_s_do='setsingle')
     fs.parse(errex=1)
     fs.main()
