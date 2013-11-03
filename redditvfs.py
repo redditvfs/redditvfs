@@ -20,17 +20,6 @@ fuse.fuse_python_api = (0, 2)
 content_stuff = ['thumbnail', 'flat', 'votes', 'content']
 
 
-def sanitize_filepath(path):
-    """
-    Converts provided path to legal UNIX filepaths.
-    """
-    # '/' is illegal
-    path = path.replace('/', '_')
-    # Direntry() doesn't seem to like non-ascii
-    path = path.encode('ascii', 'ignore')
-    return path
-
-
 class redditvfs(fuse.Fuse):
     def __init__(self, reddit=None, username=None, *args, **kw):
         fuse.Fuse.__init__(self, *args, **kw)
@@ -386,6 +375,19 @@ class redditvfs(fuse.Fuse):
                 elif vote < 0:
                     post.downvote()
         return len(buf)
+
+
+def sanitize_filepath(path):
+    """
+    Converts provided path to legal UNIX filepaths.
+    """
+    # remove illegal and confusing characters
+    for char in ['/', '\n', '\0']:
+        path = path.replace(char, '_')
+    # Direntry() doesn't seem to like non-ascii
+    path = path.encode('ascii', 'ignore')
+    return path
+
 
 def get_comment_obj(path):
     """
