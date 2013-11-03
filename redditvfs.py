@@ -278,9 +278,9 @@ class redditvfs(fuse.Fuse):
 
                 comment = get_comment_obj(path)
 
-                yield fuse.Direntry('flat')
-                yield fuse.Direntry('votes')
-                yield fuse.Direntry('content')
+                for file in content_stuff:
+                    if file != 'thumbnail':
+                        yield fuse.Direntry(file)
                 yield fuse.Direntry('_Posted_by_' + str(comment.author)+'_')
 
                 for reply in comment.replies:
