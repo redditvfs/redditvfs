@@ -56,7 +56,6 @@ class redditvfs(fuse.Fuse):
         """
         returns stat info for file, such as permissions and access times.
         """
-        print "getattr: "  + path
         # default nlink and time info
         st = fuse.Stat()
         st.st_nlink = 2
@@ -90,22 +89,23 @@ class redditvfs(fuse.Fuse):
         elif path_split[1] == 'r' and path_len == 4:
             # r/*/* - submissions
             st.st_mode = stat.S_IFDIR | 0444
-        elif (path_split[1] == 'r' and path_len == 4 and path_split[-1] in
+        elif (path_split[1] == 'r' and path_len == 5 and path_split[-1] in
                 ['thumbnail', 'flat', 'votes', 'content']):
             # content stuff in submission
             st.st_mode = stat.S_IFREG | 0444
             post = get_comment_obj(path)
+            formatted = ''
             if path_split[-1] == 'content':
                 # TODO
-                formatted = ''
+                pass
             elif path_split[-1] == 'votes':
                 # TODO votes information
-                formatted = ''
+                pass
             elif path_split[-1] == 'flat':
                 # TODO votes information
-                formatted = ''
-            elif (path_split[-1] == 'thumbnail' and post.thumbnail != '' and
-                    post.thumbnail != 'self'):
+                pass
+            elif (path_split[-1] == 'thumbnail' and 'thumbnail' in dir(post)
+                    and post.thumbnail != '' and post.thumbnail != 'self'):
                 f = urllib2.urlopen(post.thumbnail)
                 if f.getcode() == 200:
                     formatted = f.read()
@@ -125,15 +125,16 @@ class redditvfs(fuse.Fuse):
             # content stuff in comment post
             st.st_mode = stat.S_IFREG | 0444
             post = get_comment_obj(path)
+            formatted = ''
             if path_split[-1] == 'content':
                 # TODO
-                formatted = ''
+                pass
             elif path_split[-1] == 'votes':
                 # TODO votes information
-                formatted = ''
+                pass
             elif path_split[-1] == 'flat':
                 # TODO votes information
-                formatted = ''
+                pass
             st.st_size = len(formatted)
         else:
             # everything else is a file
@@ -143,7 +144,6 @@ class redditvfs(fuse.Fuse):
     def readlink(self, path):
         numdots = len(path.split('/'))-2
         dots=''
-        print "TEST TEST TSET: " + str(numdots)
         if path.split('/')[-1:][0][-1:] == '_' and len(path.split('/'))>=5:
             #if this is a userlink
             while (numdots>0):
@@ -196,13 +196,13 @@ class redditvfs(fuse.Fuse):
             elif path_len == 4:
                 # a submission in a subreddit
 
+                post_id = path_split[3].split(' ')[-1]
+                post = reddit.get_submission(submission_id = post_id)
+
                 yield fuse.Direntry('flat')
                 yield fuse.Direntry('votes')
                 yield fuse.Direntry('content')
-                yield fuse.Direntry("_Posted_by_"+str(post.author)+"_")
-                
-                post_id = path_split[3].split(' ')[-1]
-                post = reddit.get_submission(submission_id = post_id)
+                yield fuse.Direntry("_Posted_by_" + str(post.author) + "_")
 
                 if post.thumbnail != "" and post.thumbnail != 'self':
                     # there is a thumbnail
@@ -220,13 +220,12 @@ class redditvfs(fuse.Fuse):
                 # is a good way to get a submission from the id and to walk
                 # down the tree, so doing that as a work-around.
 
+                comment = get_comment_obj(path)
+
                 yield fuse.Direntry('flat')
                 yield fuse.Direntry('votes')
                 yield fuse.Direntry('content')
-                yield fuse.Direntry('_Posted_by_' + str(post.author)+'_')
-
-
-                comment = get_comment_obj(path)
+                yield fuse.Direntry('_Posted_by_' + str(comment.author)+'_')
 
                 for reply in comment.replies:
                     if 'body' in dir(reply):
