@@ -40,6 +40,7 @@ class redditvfs(fuse.Fuse):
 		if path.split('/')[-1:][0][-4:] == '.sub':
 			#and it's a .sub file
 			if reddit.is_logged_in:
+				print("We want to sub to:" + path.split('/')[-1:][0][:-4])
 				reddit.subscribe(path.split('/')[-1:][0][:-4])
 				return
 			else:
@@ -71,9 +72,9 @@ class redditvfs(fuse.Fuse):
             # r/*/ - subreddits	
 	    if reddit.is_logged_in():
 		if path.split('/')[-1:][0][-4:] == '.sub':
-			my_subs = [sub.display_name for sub in reddit.get_my_subreddits()]
+			my_subs = [sub.display_name.lower() for sub in reddit.get_my_subreddits() ]
 			print(my_subs)
-			if path.split('/')[-1:][0][:-4] not in my_subs:
+			if (path.split('/')[-1:][0][:-4]).lower() not in my_subs:
 				print('NOT FOUND')
 				st = -2
 			else:
