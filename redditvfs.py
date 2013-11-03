@@ -30,7 +30,7 @@ def sanitize_filepath(path):
 
 
 class redditvfs(fuse.Fuse):
-    def __init__(self, reddit=None, *args, **kw):
+    def __init__(self, reddit=None, username=None, *args, **kw):
         fuse.Fuse.__init__(self, *args, **kw)
 
         if reddit is None:
@@ -207,6 +207,12 @@ class redditvfs(fuse.Fuse):
                         yield fuse.Direntry(
                                 sanitize_filepath(reply.body[0:pathmax]
                                     + ' ' + reply.id))
+        elif path_split[1] == 'u':
+            if path_len == 2:
+                # if user is logged in, show the user.  Otherwise, this empty
+                # doesn't have any values listed.
+                if reddit.is_logged_in():
+                    yield fuse.Direntry(username)
 
     def read(self, path, size, offset, fh=None):
         path_split = path.split('/')
@@ -292,7 +298,9 @@ if __name__ == '__main__':
             except Exception, e:
                 print e
                 print 'Failed to login'
+    else:
+        username = None
 
-    fs = redditvfs(reddit=reddit)
+    fs = redditvfs(reddit=reddit, username=username)
     fs.parse(errex=1)
     fs.main()
