@@ -58,6 +58,7 @@ class redditvfs(fuse.Fuse):
         """
         returns stat info for file, such as permissions and access times.
         """
+
         # default nlink and time info
         st = fuse.Stat()
         st.st_nlink = 2
@@ -65,17 +66,30 @@ class redditvfs(fuse.Fuse):
         st.st_mtime = st.st_atime
         st.st_ctime = st.st_atime
 
+        # everything defaults to being a normal file unless explicitly set
+        # otherwise
+        st.st_mode = stat.S_IFREG | 0444
+
+        # useful information
         path_split = path.split('/')
         path_len = len(path_split)
-        # set if filetype and permissions
+        print path_split
+        print path_len
+
+        # "." and ".."
         if path_split[-1] == '.' or path_split[-1] == '..':
             # . and ..
-            st.st_mode = stat.S_IFDIR | 0444
-        elif path in ['/', '/u', '/r']:
-            # top-level directories
-            st.st_mode = stat.S_IFDIR | 0444
-        elif path_split[1] == 'r' and path_len == 3:
-            # r/*/ - subreddits
+            st.st_mode = stat.S_IFDIR | 0555
+            return st
+
+        # top-level directories
+        if path in ['/', '/u', '/r']:
+            st.st_mode = stat.S_IFDIR | 0555
+            return st
+
+        # r/*/ - subreddits
+        if path_split[1] == 'r' and path_len == 3:
+            # check for .sub directories for subscribing
             if reddit.is_logged_in():
                 if path.split('/')[-1:][0][-4:] == '.sub':
                     my_subs = [sub.display_name.lower() for sub in
@@ -83,17 +97,22 @@ class redditvfs(fuse.Fuse):
                     if (path.split('/')[-1:][0][:-4]).lower() not in my_subs:
                         st = -2
                     else:
-                        st.st_mode = stat.S_IFDIR | 0444
+                        st.st_mode = stat.S_IFDIR | 0555
                 else:
-                    st.st_mode = stat.S_IFDIR | 0444
+                    st.st_mode = stat.S_IFDIR | 0555
             else:
-                st.st_mode = stat.S_IFDIR | 0444
-        elif path_split[1] == 'r' and path_len == 4:
-            # r/*/* - submissions
-            st.st_mode = stat.S_IFDIR | 0444
-        elif (path_split[1] == 'r' and path_len == 5 and path_split[-1] in
+                # normal subreddit
+                st.st_mode = stat.S_IFDIR | 0555
+            return st
+
+        # r/*/* - submissions
+        if path_split[1] == 'r' and path_len == 4:
+            st.st_mode = stat.S_IFDIR | 0555
+            return st
+
+        # r/*/*/[vote, etc] - content stuff in submission
+        if (path_split[1] == 'r' and path_len == 5 and path_split[-1] in
                 content_stuff):
-            # content stuff in submission
             st.st_mode = stat.S_IFREG | 0444
             post_id = path_split[3].split(' ')[-1]
             post = reddit.get_submission(submission_id = post_id)
@@ -113,39 +132,47 @@ class redditvfs(fuse.Fuse):
                 if f.getcode() == 200:
                     formatted = f.read()
             st.st_size = len(formatted)
-        elif (path_split[1] == 'r' and path_len > 4 and path_split[-1] not in
+            return st
+
+        # r/*/*/** - comment post
+        if (path_split[1] == 'r' and path_len > 4 and path_split[-1] not in
+                content_stuff and path.split('/')[-1:][0][-1:] != '_'):
+            st.st_mode = stat.S_IFDIR | 0555
+            return st
+
+        # user link
+        if (path_split[1] == 'r' and path_len > 4 and path_split[-1] not in
+                content_stuff and path.split('/')[-1:][0][-1:] == '_'):
+            st.st_mode = stat.S_IFLNK | 0777
+            return st
+
+        # r/*/*/** - comment directory
+        if (path_split[1] == 'r' and path_len > 5 and path_split[-1] not in
                 content_stuff):
-            # comment post or user link
-            if path.split('/')[-1:][0][-1:] == '_':
-                #symlink
-                st.st_mode = stat.S_IFLNK | 0444
-            else:
-                st.st_mode = stat.S_IFDIR | 0444
-        elif (path_split[1] == 'u' and (path_len == 3 or path_len == 4)):
-            st.st_mode = stat.S_IFDIR | 0444
-        elif (path_split[1] == 'r' and path_len > 5 and path_split[-1] in
+            st.st_mode = stat.S_IFDIR | 0555
+            return st
+
+        # r/*/*/** - comment stuff
+        if (path_split[1] == 'r' and path_len > 5 and path_split[-1] in
                 content_stuff):
-            st.st_mode = stat.S_IFDIR | 0444
+            st.st_mode = stat.S_IFREG | 0444
+            return st
+
+        # u/* - user
+        if path_split[1] == 'u' and path_len == 3:
+            st.st_mode = stat.S_IFDIR | 0555
+            return st
+
+        # u/*/* - user stuff (comments, submitted, etc)
+        if path_split[1] == 'u' and path_len == 4:
+            st.st_mode = stat.S_IFDIR | 0555
+            return st
+
+        # u/*/*/* - links (comment, submitted, etc)
         elif (path_split[1] == 'u' and path_len == 5):
-            st.st_mode = stat.S_IFLNK | 0444
-            # content stuff in comment post
-            st.st_mode = stat.S_IFREG | 0444
-            post = get_comment_obj(path)
-            formatted = ''
-            if path_split[-1] == 'content':
-                # TODO
-                pass
-            elif path_split[-1] == 'votes':
-                # TODO votes information
-                pass
-            elif path_split[-1] == 'flat':
-                # TODO votes information
-                pass
-            st.st_size = len(formatted)
-        else:
-            # everything else is a file
-            st.st_mode = stat.S_IFREG | 0444
-        return st
+            st.st_mode = stat.S_IFLNK | 0777
+            return st
+
 
     def readlink(self, path):
         numdots = len(path.split('/'))
@@ -166,7 +193,7 @@ class redditvfs(fuse.Fuse):
             #TODO fix this into the actual path.
             return path
             #return dots+'r/' +subname + '/'+postname+'/'+path.split('/')[-1:][0]
-            
+
 
     def readdir(self, path, offset):
         """
