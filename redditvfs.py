@@ -17,7 +17,7 @@ import format
 
 fuse.fuse_python_api = (0, 2)
 
-content_stuff = ['thumbnail', 'flat', 'votes', 'content']
+content_stuff = ['thumbnail', 'flat', 'votes', 'content', 'reply']
 
 
 def sanitize_filepath(path):
@@ -128,6 +128,8 @@ class redditvfs(fuse.Fuse):
                 f = urllib2.urlopen(post.thumbnail)
                 if f.getcode() == 200:
                     formatted = f.read()
+            elif path_split[-1] == 'reply':
+                st.st_mode = stat.S_IFREG | 0666
             st.st_size = len(formatted)
             return st
 
@@ -163,6 +165,8 @@ class redditvfs(fuse.Fuse):
             elif path_split[-1] == 'flat':
                 formatted = format.format_comment(post, recursive=True)
                 formatted = formatted.encode('ascii', 'ignore')
+            elif path_split[-1] == 'reply':
+                st.st_mode = stat.S_IFREG | 0666
             st.st_size = len(formatted)
             return st
 
@@ -357,9 +361,21 @@ class redditvfs(fuse.Fuse):
         pass
 
     def write(self, path, buf, offset, fh=None):
+        """
+        Handles voting, content creation, and management. Requires login
+        """
+        if not reddit.is_logged_in():
+            return errno.EACCES
+
         path_split = path.split('/')
         path_len = len(path_split)
-        if path_split[1] == 'r' and path_len >= 4:
+
+        # ignore files created by editors and .* files
+        if path_split[-1][0] == '.' or path_split[-1][-1] == '~':
+            return errno.EPERM
+
+        # Voting
+        if path_split[1] == 'r' and path_len >= 5 and path_split[-1] == 'votes':
             # Get the post or comment
             if path_len > 5:
                 post = get_comment_obj(path)
@@ -367,15 +383,25 @@ class redditvfs(fuse.Fuse):
                 post_id = path_split[-2].split(' ')[-1]
                 post = reddit.get_submission(submission_id=post_id)
 
-            if reddit.is_logged_in() and path_split[-1] == 'votes':
-                vote = int(buf)
-                if vote == 0:
-                    post.clear_vote()
-                elif vote > 0:
-                    post.upvote()
-                elif vote < 0:
-                    post.downvote()
-        return len(buf)
+            # Determine what type of vote and place the vote
+            vote = int(buf)
+            if vote == 0:
+                post.clear_vote()
+            elif vote > 0:
+                post.upvote()
+            elif vote < 0:
+                post.downvote()
+            return len(buf)
+
+        # Reply to submission
+        if path_split[1] == 'r' and path_len == 5 and\
+                path_split[-1] not in content_stuff:
+            post_id = path_split[-2].split(' ')[-1]
+            post = reddit.get_submission(submission_id=post_id)
+            post.add_comment(buf)
+            return len(buf)
+        
+        return 0
 
 def get_comment_obj(path):
     """
@@ -384,6 +410,7 @@ def get_comment_obj(path):
     # Can't find a good way to get a comment from an id, but there
     # is a good way to get a submission from the id and to walk
     # down the tree, so doing that as a work-around.
+    print path
     path_split = path.split('/')
     path_len = len(path_split)
     post_id = path_split[3].split(' ')[-1]
