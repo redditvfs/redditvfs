@@ -133,8 +133,6 @@ class redditvfs(fuse.Fuse):
                 st.st_mode = stat.S_IFREG | 0666
                 formatted = post.url.encode('ascii', 'ignore')
             elif path_split[-1] == 'link_content' and post.url:
-                print post.url
-                print post.thumbnail
                 f = urllib2.urlopen(post.url)
                 if f.getcode() == 200:
                     formatted = f.read()
