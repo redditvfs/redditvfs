@@ -66,13 +66,13 @@ The directory also contains several 'comment directories.'
 
 Each comment directory corrosponds to the child comments. A comment directory has the same layout as a post directory, and can also contain comment directories of its own. The file `contents` instead contains the comment.
 
-To make a post, you can write to the file 'post' in the subreddit directory, with the first line being the title and the rest of the file being the contents.
+To make a post, you can write to the file `post` in the subreddit directory, with the first line being the title and the rest of the file being the contents.
 
-To post a comment, inside any comment directory (or a post directory to make a top-elevel comment) you can write to 'reply'. The contents are the comment itself.
+To post a comment, inside any comment directory (or a post directory to make a top-elevel comment) you can write to `reply`. The contents are the comment itself.
 
-To delete your post or comment, delete the 'raw_content' file in the directory of the post or comment. If you have the correct permissions, the post or comment will be deleted.
+To delete your post or comment, delete the `raw_content` file in the directory of the post or comment. If you have the correct permissions, the post or comment will be deleted.
 
-To edit a post or comment, edit the 'raw_content' file.
+To edit a post or comment, edit the `raw_content` file.
 
 
 
