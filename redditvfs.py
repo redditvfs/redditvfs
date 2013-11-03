@@ -44,24 +44,28 @@ class redditvfs(fuse.Fuse):
         st.st_atime = int(time.time())
         st.st_mtime = st.st_atime
         st.st_ctime = st.st_atime
+
+        path_split = path.split('/')
+        path_len = len(path_split)
         # set if filetype and permissions
-        if path.split('/')[-1] == '.' or path.split('/')[-1] == '..':
+        if path_split[-1] == '.' or path_split[-1] == '..':
             # . and ..
             st.st_mode = stat.S_IFDIR | 0444
         elif path in ['/', '/u', '/r']:
             # top-level directories
             st.st_mode = stat.S_IFDIR | 0444
-        elif len(path.split('/')) == 3 and path.split('/')[1] == 'r':
+        elif path_split[1] == 'r' and path_len == 3:
             # r/*/ - subreddits
             st.st_mode = stat.S_IFDIR | 0444
-        elif len(path.split('/')) == 4 and path.split('/')[1] == 'r':
+        elif path_split[1] == 'r' and path_len == 4:
             # r/*/* - submissions
             st.st_mode = stat.S_IFDIR | 0444
-        elif len(path.split('/')) > 4 and path.split('/')[1] == 'r' and\
-                path.split('/')[-1] not in ['thumbnail', 'flat', 'votes']:
-                    # comment post
-                    st.st_mode = stat.S_IFDIR | 0444
+        elif (path_split[1] == 'r' and path_len > 4 and path_split[-1] not in
+                ['thumbnail', 'flat', 'votes', 'content']):
+            # comment post
+            st.st_mode = stat.S_IFDIR | 0444
         else:
+            # everything else is a file
             st.st_mode = stat.S_IFREG | 0444
         return st
 
@@ -74,80 +78,85 @@ class redditvfs(fuse.Fuse):
         yield fuse.Direntry('.')
         yield fuse.Direntry('..')
 
-        #r = praw.Reddit(user_agent='redditvfs')
         # TODO: maybe make this configurable later
         # cut-off length on items with id to make things usable for end-user
         pathmax = 50
+
+        path_split = path.split('/')
+        path_len = len(path_split)
 
         if path == '/':
             # top-level directory
             yield fuse.Direntry('u')
             yield fuse.Direntry('r')
-        elif path == '/r':
-            # if user is logged in, populate with get_my_subreddits
-            # otherwise, default to frontpage
-            # TODO: figure out how to get non-logged-in default subreddits,
-            # falling back to get_popular_subreddits
-            if reddit.is_logged_in():
-                for subreddit in reddit.get_my_subreddits():
-                    dirname = sanitize_filepath(subreddit.url.split('/')[2])
-                    yield fuse.Direntry(dirname)
-            else:
-                for subreddit in reddit.get_popular_subreddits():
-                    dirname = sanitize_filepath(subreddit.url.split('/')[2])
-                    yield fuse.Direntry(dirname)
-        elif len(path.split('/')) == 3 and path.split('/')[1] == 'r':
-            # posts in subreddits
-            subreddit = path.split('/')[2]
-            # TODO: maybe not hardcode limit?
-            for post in reddit.get_subreddit(subreddit).get_hot(limit=10):
-                filename = sanitize_filepath(post.title[0:pathmax]
-                        + ' ' + post.id)
-                yield fuse.Direntry(filename)
-        elif len(path.split('/')) == 4 and path.split('/')[1] == 'r':
-            # a submission in a subreddit
-            post_id = path.split('/')[3].split(' ')[-1]
-            post = reddit.get_submission(submission_id = post_id)
+        elif path_split[1] == 'r':
+            if path_len == 2:
+                # if user is logged in, populate with get_my_subreddits
+                # otherwise, default to frontpage
+                # TODO: figure out how to get non-logged-in default subreddits,
+                # falling back to get_popular_subreddits
+                if reddit.is_logged_in():
+                    for subreddit in reddit.get_my_subreddits():
+                        dirname = sanitize_filepath(subreddit.url.split('/')[2])
+                        yield fuse.Direntry(dirname)
+                else:
+                    for subreddit in reddit.get_popular_subreddits():
+                        dirname = sanitize_filepath(subreddit.url.split('/')[2])
+                        yield fuse.Direntry(dirname)
+            elif path_len == 3:
+                # posts in subreddits
+                subreddit = path_split[2]
+                # TODO: maybe not hardcode limit?
+                for post in reddit.get_subreddit(subreddit).get_hot(limit=20):
+                    filename = sanitize_filepath(post.title[0:pathmax]
+                            + ' ' + post.id)
+                    yield fuse.Direntry(filename)
+            elif path_len == 4:
+                # a submission in a subreddit
+                post_id = path_split[3].split(' ')[-1]
+                post = reddit.get_submission(submission_id = post_id)
 
-            yield fuse.Direntry('flat')
-            yield fuse.Direntry('votes')
+                yield fuse.Direntry('flat')
+                yield fuse.Direntry('votes')
+                yield fuse.Direntry('content')
 
-            if post.thumbnail != "" and post.thumbnail != 'self':
-                # there is a thumbnail
-                yield fuse.Direntry('thumbnail')
+                if post.thumbnail != "" and post.thumbnail != 'self':
+                    # there is a thumbnail
+                    yield fuse.Direntry('thumbnail')
 
-            for comment in post.comments:
-                #print (sanitize_filepath(comment.body[0:pathmax] + ' ' + comment.id))
-                if 'body' in dir(comment):
-                    yield fuse.Direntry(sanitize_filepath(comment.body[0:pathmax] + ' ' + comment.id))
-        elif len(path.split('/')) > 4 and path.split('/')[1] == 'r':
-            # a comment
+                for comment in post.comments:
+                    if 'body' in dir(comment):
+                        yield fuse.Direntry(
+                                sanitize_filepath(comment.body[0:pathmax]
+                                    + ' ' + comment.id))
+            elif len(path.split('/')) > 4:
+                # a comment
 
-            # Can't find a good way to get a comment from an id, but there is a
-            # good way to get a submission from the id and to walk down the
-            # tree, so doing that as a work-around.
+                # Can't find a good way to get a comment from an id, but there
+                # is a good way to get a submission from the id and to walk
+                # down the tree, so doing that as a work-around.
 
-            post_id = path.split('/')[3].split(' ')[-1]
-            post = reddit.get_submission(submission_id = post_id)
+                post_id = path_split[3].split(' ')[-1]
+                post = reddit.get_submission(submission_id = post_id)
 
-            yield fuse.Direntry('flat')
-            yield fuse.Direntry('votes')
+                yield fuse.Direntry('flat')
+                yield fuse.Direntry('votes')
+                yield fuse.Direntry('content')
 
-            for comment in post.comments:
-                if comment.id == path.split('/')[4].split(' ')[-1]:
-                    print comment.id
-                    break
-            level = 4
-            while level < len(path.split('/')) - 1:
-                level += 1
-                print "want: " + path.split('/')[level].split(' ')[-1]
-                for comment in comment.replies:
-                    if comment.id == path.split('/')[level].split(' ')[-1]:
-                        print comment.id
+                for comment in post.comments:
+                    if comment.id == path_split[4].split(' ')[-1]:
                         break
-            for reply in comment.replies:
-                if 'body' in dir(reply):
-                    yield fuse.Direntry(sanitize_filepath(reply.body[0:pathmax] + ' ' + reply.id))
+                level = 4
+                while level < path_len - 1:
+                    level += 1
+                    for comment in comment.replies:
+                        if comment.id == path_split[level].split(' ')[-1]:
+                            break
+                for reply in comment.replies:
+                    if 'body' in dir(reply):
+                        yield fuse.Direntry(
+                                sanitize_filepath(reply.body[0:pathmax]
+                                    + ' ' + reply.id))
 
 
 def login_get_username(config):
