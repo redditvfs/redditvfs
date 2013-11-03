@@ -309,8 +309,11 @@ class redditvfs(fuse.Fuse):
         path_len = len(path_split)
         if path_split[1] == 'r' and path_len >= 4:
             # Get the post or comment
-            post_id = path_split[-2].split(' ')[-1]
-            post = reddit.get_submission(submission_id=post_id)
+            if path_len > 5:
+                post = get_comment_obj(path)
+            else:
+                post_id = path_split[-2].split(' ')[-1]
+                post = reddit.get_submission(submission_id=post_id)
 
             if reddit.is_logged_in() and path_split[-1] == 'votes':
                 if buf == 0:
