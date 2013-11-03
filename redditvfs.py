@@ -66,13 +66,6 @@ class redditvfs(fuse.Fuse):
         st.st_mtime = st.st_atime
         st.st_ctime = st.st_atime
 
-        # pretend to accept editor backup files so they don't complain,
-        # although we don't do anything with it.
-        last_word = path.split(' ')[-1].split('/')[-1]
-        if last_word.find('.') != -1 or last_word.find('~') != -1:
-            st.st_mode = stat.S_IFDIR | 0777
-            return st
-
         # everything defaults to being a normal file unless explicitly set
         # otherwise
         st.st_mode = stat.S_IFREG | 0444
