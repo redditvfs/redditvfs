@@ -73,8 +73,6 @@ class redditvfs(fuse.Fuse):
         # useful information
         path_split = path.split('/')
         path_len = len(path_split)
-        print path_split
-        print path_len
 
         # "." and ".."
         if path_split[-1] == '.' or path_split[-1] == '..':
