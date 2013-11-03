@@ -118,8 +118,10 @@ class redditvfs(fuse.Fuse):
                 st.st_mode = stat.S_IFLNK | 0444
             else:
                 st.st_mode = stat.S_IFDIR | 0444
-        elif (path_split[1] == 'u' and (path_len >= 3 or path_len <= 5)):
+        elif (path_split[1] == 'u' and (path_len == 3 or path_len == 4)):
             st.st_mode = stat.S_IFDIR | 0444    
+        elif (path_split[1] == 'u' and path_len == 5):
+            st.st_mode = stat.S_IFLNK | 0444
         elif (path_split[1] == 'r' and path_len > 4 and path_split[-1] in
                 ['thumbnail', 'flat', 'votes', 'content']):
             # content stuff in comment post
@@ -142,14 +144,26 @@ class redditvfs(fuse.Fuse):
         return st
 
     def readlink(self, path):
-        numdots = len(path.split('/'))-2
+        numdots = len(path.split('/'))
         dots=''
         if path.split('/')[-1:][0][-1:] == '_' and len(path.split('/'))>=5:
             #if this is a userlink
+            numdots-=2
             while (numdots>0):
                 dots+='../'
                 numdots-=1
             return dots+'u/'+path.split('/')[-1:][0][11:-1]
+        if path.split('/')[1] == 'u' and len(path.split('/')) == 5:
+            numdots-=2
+            while (numdots > 0):
+                dots+='../'
+                numdots-=1
+            print("TESTESTETET@@@@@@@")
+            sub =  get_comment_obj(path).submission()
+            print ("TESTTESTESTETSETETSETSETS " + str(sub.fullname))
+            return path
+            #return dots+'r/' +subname + '/'+postname+'/'+path.split('/')[-1:][0]
+            
 
     def readdir(self, path, offset):
         """
@@ -242,7 +256,7 @@ class redditvfs(fuse.Fuse):
                 yield fuse.Direntry('Overview')
                 yield fuse.Direntry('Submitted')
                 yield fuse.Direntry('Comments')
-            if path_len >= 4:
+            if path_len == 4:
                 user = reddit.get_redditor(path_split[2])
                 if path_split[3] == 'Overview':
                     for c in enumerate(user.get_overview(limit=10)):
@@ -302,7 +316,7 @@ def get_comment_obj(path):
         if comment.id == path_split[4].split(' ')[-1]:
             break
     level = 4
-    while level < path_len - 1:
+    while level < path_len - 2:
         level += 1
         for comment in comment.replies:
             if comment.id == path_split[level].split(' ')[-1]:
