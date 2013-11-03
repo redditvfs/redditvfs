@@ -17,7 +17,7 @@ import format
 
 fuse.fuse_python_api = (0, 2)
 
-content_stuff = ['thumbnail', 'flat', 'votes', 'content']
+content_stuff = ['thumbnail', 'flat', 'votes', 'content', 'reply']
 
 
 class redditvfs(fuse.Fuse):
@@ -54,13 +54,6 @@ class redditvfs(fuse.Fuse):
         st.st_atime = int(time.time())
         st.st_mtime = st.st_atime
         st.st_ctime = st.st_atime
-
-        # pretend to accept editor backup files so they don't complain,
-        # although we don't do anything with it.
-        last_word = path.split(' ')[-1].split('/')[-1]
-        if last_word.find('.') != -1 or last_word.find('~') != -1:
-            st.st_mode = stat.S_IFDIR | 0777
-            return st
 
         # everything defaults to being a normal file unless explicitly set
         # otherwise
@@ -124,6 +117,8 @@ class redditvfs(fuse.Fuse):
                 f = urllib2.urlopen(post.thumbnail)
                 if f.getcode() == 200:
                     formatted = f.read()
+            elif path_split[-1] == 'reply':
+                st.st_mode = stat.S_IFREG | 0666
             st.st_size = len(formatted)
             return st
 
@@ -159,6 +154,8 @@ class redditvfs(fuse.Fuse):
             elif path_split[-1] == 'flat':
                 formatted = format.format_comment(post, recursive=True)
                 formatted = formatted.encode('ascii', 'ignore')
+            elif path_split[-1] == 'reply':
+                st.st_mode = stat.S_IFREG | 0666
             st.st_size = len(formatted)
             return st
 
@@ -272,9 +269,9 @@ class redditvfs(fuse.Fuse):
 
                 comment = get_comment_obj(path)
 
-                yield fuse.Direntry('flat')
-                yield fuse.Direntry('votes')
-                yield fuse.Direntry('content')
+                for file in content_stuff:
+                    if file != 'thumbnail':
+                        yield fuse.Direntry(file)
                 yield fuse.Direntry('_Posted_by_' + str(comment.author)+'_')
 
                 for reply in comment.replies:
@@ -356,9 +353,17 @@ class redditvfs(fuse.Fuse):
         pass
 
     def write(self, path, buf, offset, fh=None):
+        """
+        Handles voting, content creation, and management. Requires login
+        """
+        if not reddit.is_logged_in():
+            return errno.EACCES
+
         path_split = path.split('/')
         path_len = len(path_split)
-        if path_split[1] == 'r' and path_len >= 4:
+
+        # Voting
+        if path_split[1] == 'r' and path_len >= 5 and path_split[-1] == 'votes':
             # Get the post or comment
             if path_len > 5:
                 post = get_comment_obj(path)
@@ -366,15 +371,36 @@ class redditvfs(fuse.Fuse):
                 post_id = path_split[-2].split(' ')[-1]
                 post = reddit.get_submission(submission_id=post_id)
 
-            if reddit.is_logged_in() and path_split[-1] == 'votes':
-                vote = int(buf)
-                if vote == 0:
-                    post.clear_vote()
-                elif vote > 0:
-                    post.upvote()
-                elif vote < 0:
-                    post.downvote()
+            # Determine what type of vote and place the vote
+            vote = int(buf)
+            if vote == 0:
+                post.clear_vote()
+            elif vote > 0:
+                post.upvote()
+            elif vote < 0:
+                post.downvote()
+            return len(buf)
+
+        # Reply to submission
+        if path_split[1] == 'r' and path_len == 5 and\
+                path_split[-1] == 'reply':
+            post_id = path_split[-2].split(' ')[-1]
+            post = reddit.get_submission(submission_id=post_id)
+            post.add_comment(buf)
+            return len(buf)
+
+        # Reply to comments
+        if path_split[1] == 'r' and path_len > 5 and\
+                path_split[-1] == 'reply':
+            post = get_comment_obj(path)
+            post.reply(buf)
+            return len(buf)
+
+        # fake success for editor's backup files        
         return len(buf)
+
+    def create(self, path, flags, mode):
+        return errno.EPERM
 
 
 def sanitize_filepath(path):
