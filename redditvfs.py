@@ -93,7 +93,8 @@ class redditvfs(fuse.Fuse):
                 ['thumbnail', 'flat', 'votes', 'content']):
             # content stuff in submission
             st.st_mode = stat.S_IFREG | 0444
-            post = get_comment_obj(path)
+            post_id = path_split[3].split(' ')[-1]
+            post = reddit.get_submission(submission_id = post_id)
             formatted = ''
             if path_split[-1] == 'content':
                 formatted = format.format_sub_content(post)
