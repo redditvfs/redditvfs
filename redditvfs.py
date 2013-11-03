@@ -535,6 +535,9 @@ def get_comment_obj(path):
     path_len = len(path_split)
     post_id = path_split[3].split(' ')[-1]
     post = reddit.get_submission(submission_id=post_id)
+    # quick error check
+    if len(post.comments) == 0:
+        return -errno.ENOENT
     for comment in post.comments:
         if comment.id == path_split[4].split(' ')[-1]:
             break
