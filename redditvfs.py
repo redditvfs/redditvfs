@@ -34,19 +34,19 @@ class redditvfs(fuse.Fuse):
         if reddit is None:
             raise Exception('reddit must be set')
 
+    def rmdir(self, path):
+        if len(path.split('/')) == 3 and reddit.is_logged_in:
+            reddit.unsubscribe(path.split('/')[-1:][0])
+            return
+        else:
+            return -errno.ENOSYS
+
     def mkdir(self, path, mode):
-        if len(path.split('/')) == 3:
-            #if we're trying to mkdir in the subreddit
-            if path.split('/')[-1:][0][-4:] == '.sub':
-                #and it's a .sub file
-                if reddit.is_logged_in:
-                    print("We want to sub to:" + path.split('/')[-1:][0][:-4])
-                    reddit.subscribe(path.split('/')[-1:][0][:-4])
-                    return
-                else:
-                    return -errno.ENOSYS
-            else:
-                return -errno.ENOSYS
+        if len(path.split('/')) == 3 \
+                and path.split('/')[-1:][0][-4:] == '.sub' \
+                and reddit.is_logged_in:
+            reddit.subscribe(path.split('/')[-1:][0][:-4])
+            return
         else:
             return -errno.ENOSYS
 
@@ -74,13 +74,14 @@ class redditvfs(fuse.Fuse):
             # r/*/ - subreddits
             if reddit.is_logged_in():
                 if path.split('/')[-1:][0][-4:] == '.sub':
-                    my_subs = [sub.display_name.lower() for sub in reddit.get_my_subreddits()]
-                    print my_subs
+                    my_subs = [sub.display_name.lower() for sub in
+                               reddit.get_my_subreddits()]
                     if (path.split('/')[-1:][0][:-4]).lower() not in my_subs:
-                        print 'NOT FOUND'
                         st = -2
                     else:
                         st.st_mode = stat.S_IFDIR | 0444
+                else:
+                    st.st_mode = stat.S_IFDIR | 0444
             else:
                 st.st_mode = stat.S_IFDIR | 0444
         elif path_split[1] == 'r' and path_len == 4:
