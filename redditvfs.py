@@ -31,13 +31,24 @@ class redditvfs(fuse.Fuse):
     def __init__(self, reddit=None, *args, **kw):
         fuse.Fuse.__init__(self, *args, **kw)
 
-        if reddit is None:
+	if reddit is None:
             raise Exception('reddit must be set')
 
     def mkdir(self, path, mode):
-        #print '*** mkdir', path, oct(mode)
-	print('MKDIR DETECTED')
-        return -errno.ENOSYS
+	if len(path.split('/')) == 3:
+		#if we're trying to mkdir in the subreddit
+		if path.split('/')[-1:][0][-4:] == '.sub':
+			#and it's a .sub file
+			if reddit.is_logged_in:
+				reddit.subscribe(path.split('/')[-1:][0][:-4])
+				return
+			else:
+				return -errno.ENOSYS
+		else:
+			return -errno.ENOSYS
+	else:
+		return -errno.ENOSYS
+		
 
     def getattr(self, path):
         """
@@ -57,14 +68,27 @@ class redditvfs(fuse.Fuse):
             # top-level directories
             st.st_mode = stat.S_IFDIR | 0444
         elif len(path.split('/')) == 3 and path.split('/')[1] == 'r':
-            # r/*/ - subreddits
-            st.st_mode = stat.S_IFDIR | 0444
+            # r/*/ - subreddits	
+	    if reddit.is_logged_in():
+		if path.split('/')[-1:][0][-4:] == '.sub':
+			my_subs = [sub.display_name for sub in reddit.get_my_subreddits()]
+			print(my_subs)
+			if path.split('/')[-1:][0][:-4] not in my_subs:
+				print('NOT FOUND')
+				st = -2
+			else:
+				st.st_mode = stat.S_IFDIR | 0444
+		else:
+			st.st_mode = stat.S_IFDIR | 0444
+	    else:
+            	st.st_mode = stat.S_IFDIR | 0444
         elif len(path.split('/')) == 4 and path.split('/')[1] == 'r':
             # r/*/* - posts
             st.st_mode = stat.S_IFDIR | 0444
         else:
             st.st_mode = stat.S_IFREG | 0444
         return st
+#	return -errno.ENOENT
 
     def readdir(self, path, offset):
         """
