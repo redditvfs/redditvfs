@@ -338,7 +338,7 @@ def get_comment_obj(path):
         if comment.id == path_split[4].split(' ')[-1]:
             break
     level = 4
-    while level < path_len - 2:
+    while level < path_len - 1:
         level += 1
         for comment in comment.replies:
             if comment.id == path_split[level].split(' ')[-1]:
