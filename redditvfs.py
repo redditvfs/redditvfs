@@ -260,9 +260,10 @@ class redditvfs(fuse.Fuse):
         path_split = path.split('/')
         path_len = len(path_split)
 
-        if path_split[1] == 'r' and path_len == 4:
+        if path_split[1] == 'r' and path_len == 5:
             # Get the post
-            post = get_comment_obj(path)
+            post_id = path_split[3].split(' ')[-1]
+            post = reddit.get_submission(submission_id = post_id)
 
             formatted = ''
             if path_split[-1] == 'content':
@@ -279,16 +280,16 @@ class redditvfs(fuse.Fuse):
                 if f.getcode() == 200:
                     formatted = f.read()
             return formatted[offset:offset+size]
-        elif path_split[1] == 'r' and path_len >= 5:
+        elif path_split[1] == 'r' and path_len > 5:
             # Get the comment
             post = get_comment_obj(path)
             if path_split[-1] == 'content':
-                formatted = format.format_comment(post, recursive=false)
+                formatted = format.format_comment(post, recursive=False)
                 formatted = formatted.encode('ascii', 'ignore')
             elif path_split[-1] == 'votes':
                 formatted = str(post.score) + '\n'
             elif path_split[-1] == 'flat':
-                formatted = format.format_comment(post)
+                formatted = format.format_comment(post, recursive=True)
                 formatted = formatted.encode('ascii', 'ignore')
             return formatted[offset:offset+size]
         elif path.split('/')[1] == 'u':
@@ -334,7 +335,7 @@ def get_comment_obj(path):
         if comment.id == path_split[4].split(' ')[-1]:
             break
     level = 4
-    while level < path_len - 1:
+    while level < path_len - 2:
         level += 1
         for comment in comment.replies:
             if comment.id == path_split[level].split(' ')[-1]:
