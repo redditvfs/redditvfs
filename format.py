@@ -13,7 +13,7 @@ def format_sub_content(submission):
     text.append(br)
     text += wrap.wrap(submission.title)
     text.append(br)
-    if post.selftext:
+    if submission.selftext:
         text += wrap.wrap('\n' + submission.selftext + '\n')
         text.append(br)
     d = get_info_dict(submission)
