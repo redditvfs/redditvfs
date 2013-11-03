@@ -410,7 +410,6 @@ def get_comment_obj(path):
             if comment.id == path_split[level].split(' ')[-1]:
                 break
     return comment
-    # /u/ilar/Overview/I like how you all are suggesting all these redicu c94iwxm
 
 def login_get_username(config):
     """
