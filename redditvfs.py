@@ -88,7 +88,7 @@ class redditvfs(fuse.Fuse):
             # otherwise, default to frontpage
             # TODO: figure out how to get non-logged-in default subreddits,
             # falling back to get_popular_subreddits
-            if reddit.is_logged_in:
+            if reddit.is_logged_in():
                 for subreddit in reddit.get_my_subreddits():
                     dirname = sanitize_filepath(subreddit.url.split('/')[2])
                     yield fuse.Direntry(dirname)
