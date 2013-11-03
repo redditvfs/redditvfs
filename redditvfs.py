@@ -418,7 +418,6 @@ def get_comment_obj(path):
     # Can't find a good way to get a comment from an id, but there
     # is a good way to get a submission from the id and to walk
     # down the tree, so doing that as a work-around.
-    print path
     path_split = path.split('/')
     path_len = len(path_split)
     post_id = path_split[3].split(' ')[-1]
