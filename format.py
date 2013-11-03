@@ -30,6 +30,7 @@ def format_submission(submission):
     return '\n'.join(text)+'\n'
 
 def get_info_dict(comsub):
+    """get dictionary of attributes for formatting"""
     d = {}
     d['author'] = comsub.author if comsub.author else "DELETED"
     d['time'] = time.ctime(comsub.created)
@@ -39,33 +40,38 @@ def get_info_dict(comsub):
     d['id'] = comsub.id
     return d
 
-def format_comment(comment, depth=0):
+def format_comment(comment, depth=0, cutoff=-1, recursive=True):
     """returns formatted comment + children as a [String]""" 
     indent = 2
     base_ind=4
     indent += depth * base_ind
+    if depth==cutoff:
+        return [' '*indent + '...']
     if isinstance(comment, praw.objects.MoreComments):
         return [' '*indent + "More..."]
-    text = ['\n\n',get_comment_header(comment, indent),''] 
+    text = [get_comment_header(comment, indent)] 
     text += get_comment_body(comment,indent)
-    for child in comment.replies:
-        text += format_comment(child, depth+1)
+    if recursive:
+        for child in comment.replies:
+            text += format_comment(child, depth+1)
     return text  
 
 
 def get_comment_header(comment, indent):
     """return formatted header of post"""
-    formatted = indent * '-'+ "%(author)s %(time)s ago\n"\
-    + indent * ' ' + "%(score)d points (%(ups)d|%(downs)d) id:%(id)s"
+    wrap = indent * ' ' + (78- indent) * '-'
+    formatted = indent * '-'+ "|%(author)s %(time)s ago\n"\
+    + indent * ' ' + "|%(score)d points (%(ups)d|%(downs)d) id:%(id)s"
     d = get_info_dict(comment)
-    return formatted % d 
+    return '\n'.join([wrap, formatted % d, wrap])
 
 def get_comment_body(comment, indent):
     """returns formatted body of comment as [String]"""
-    indent = indent * ' '
-    wrapper = textwrap.TextWrapper(initial_indent=indent, subsequent_indent=indent,
-            width=79)
-    return wrapper.wrap(comment.body)
+    wrap = indent * ' ' + (78- indent) * '-'
+    indent = indent* ' '
+    wrapper = textwrap.TextWrapper(initial_indent=indent + '|',
+         subsequent_indent=indent + '|',width=79)
+    return wrapper.wrap(comment.body)+[wrap]
 
 
 def get_top_10(subreddit):
@@ -82,5 +88,5 @@ if __name__=='__main__':
     posts = [post for post in sub.get_top(limit=1)]   
     with codecs.open('out.txt', mode='w',encoding='utf-8') as f:
         for post in posts:
-            lines = format_sub_content(post) 
+            lines = format_submission(post) 
             print lines 
