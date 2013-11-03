@@ -18,7 +18,8 @@ import json
 
 fuse.fuse_python_api = (0, 2)
 
-content_stuff = ['thumbnail', 'flat', 'votes', 'content', 'reply']
+content_stuff = ['thumbnail', 'flat', 'votes', 'content', 'reply',
+                 'raw_content']
 
 
 class redditvfs(fuse.Fuse):
@@ -125,6 +126,9 @@ class redditvfs(fuse.Fuse):
                     formatted = f.read()
             elif path_split[-1] == 'reply':
                 st.st_mode = stat.S_IFREG | 0666
+            elif path_split[-1] == 'raw_content' and post.selftext:
+                st.st_mode = stat.S_IFREG | 0666
+                formatted = post.selftext.encode('ascii', 'ignore')
             st.st_size = len(formatted)
             return st
 
@@ -162,6 +166,9 @@ class redditvfs(fuse.Fuse):
                 formatted = formatted.encode('ascii', 'ignore')
             elif path_split[-1] == 'reply':
                 st.st_mode = stat.S_IFREG | 0666
+            elif path_split[-1] == 'raw_content':
+                st.st_mode = stat.S_IFREG | 0666
+                formatted = post.body.encode('ascii', 'ignore')
             st.st_size = len(formatted)
             return st
 
@@ -347,6 +354,8 @@ class redditvfs(fuse.Fuse):
                 f = urllib2.urlopen(post.thumbnail)
                 if f.getcode() == 200:
                     formatted = f.read()
+            elif path_split[-1] == 'raw_content' and post.selftext:
+                formatted = post.selftext.encode('ascii', 'ignore')
             return formatted[offset:offset+size]
         elif path_split[1] == 'r' and path_len > 5:
             # Get the comment
@@ -359,6 +368,8 @@ class redditvfs(fuse.Fuse):
             elif path_split[-1] == 'flat':
                 formatted = format.format_comment(post, recursive=True)
                 formatted = formatted.encode('ascii', 'ignore')
+            elif path_split[-1] == 'raw_content':
+                formatted = post.body.encode('ascii', 'ignore')
             return formatted[offset:offset+size]
         elif path.split('/')[1] == 'u':
             # TODO user handling
@@ -430,6 +441,18 @@ class redditvfs(fuse.Fuse):
                 # Link
                 reddit.submit(subreddit=path_split[2], title=title,
                               url=buf_split[1])
+            return len(buf)
+
+        # Edit a post or comment
+        if path_split[1] == 'r' and path_len >= 5 and\
+                path_split[-1] == 'raw_content':
+            # Get the post or comment
+            if path_len > 5:
+                post = get_comment_obj(path)
+            else:
+                post_id = path_split[-2].split(' ')[-1]
+                post = reddit.get_submission(submission_id=post_id)
+            post.edit(buf)
             return len(buf)
 
         # fake success for editor's backup files
