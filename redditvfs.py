@@ -34,6 +34,11 @@ class redditvfs(fuse.Fuse):
         if reddit is None:
             raise Exception('reddit must be set')
 
+    def mkdir(self, path, mode):
+        #print '*** mkdir', path, oct(mode)
+	print('MKDIR DETECTED')
+        return -errno.ENOSYS
+
     def getattr(self, path):
         """
         returns stat info for file, such as permissions and access times.
