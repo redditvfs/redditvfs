@@ -461,6 +461,27 @@ class redditvfs(fuse.Fuse):
     def create(self, path, flags, mode):
         return errno.EPERM
 
+    def unlink(self, path):
+        """
+        Handle deleting posts and comments
+        """
+        if not reddit.is_logged_in():
+            return errno.EACCES
+
+        path_split = path.split('/')
+        path_len = len(path_split)
+
+        if path_split[1] == 'r' and path_len >= 5 and\
+                path_split[-1] == 'raw_content':
+            if path_len > 5:
+                post = get_comment_obj(path)
+            else:
+                post_id = path_split[-2].split(' ')[-1]
+                post = reddit.get_submission(submission_id=post_id)
+            post.delete()
+            return 0
+        return errno.EPERM
+
 
 def sanitize_filepath(path):
     """
