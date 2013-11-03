@@ -66,6 +66,13 @@ class redditvfs(fuse.Fuse):
         st.st_mtime = st.st_atime
         st.st_ctime = st.st_atime
 
+        # pretend to accept editor backup files so they don't complain,
+        # although we don't do anything with it.
+        last_word = path.split(' ')[-1].split('/')[-1]
+        if last_word.find('.') != -1 or last_word.find('~') != -1:
+            st.st_mode = stat.S_IFDIR | 0777
+            return st
+
         # everything defaults to being a normal file unless explicitly set
         # otherwise
         st.st_mode = stat.S_IFREG | 0444
@@ -252,9 +259,10 @@ class redditvfs(fuse.Fuse):
                 post_id = path_split[3].split(' ')[-1]
                 post = reddit.get_submission(submission_id = post_id)
 
-                yield fuse.Direntry('flat')
-                yield fuse.Direntry('votes')
-                yield fuse.Direntry('content')
+                # vote, content, etc
+                for file in content_stuff:
+                    if file != 'thumbnail':
+                        yield fuse.Direntry(file)
                 yield fuse.Direntry("_Posted_by_" + str(post.author) + "_")
 
                 if post.thumbnail != "" and post.thumbnail != 'self':
