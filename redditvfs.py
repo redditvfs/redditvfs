@@ -95,14 +95,13 @@ class redditvfs(fuse.Fuse):
             st.st_mode = stat.S_IFREG | 0444
             post = get_comment_obj(path)
             if path_split[-1] == 'content':
-                # TODO
-                formatted = ''
+                formatted = format.format_sub_content(post)
+                formatted = formatted.encode('ascii', 'ignore')
             elif path_split[-1] == 'votes':
-                # TODO votes information
-                formatted = ''
+                formatted = str(post.score) + '\n'
             elif path_split[-1] == 'flat':
-                # TODO votes information
-                formatted = ''
+                formatted = format.format_submission(post)
+                formatted = formatted.encode('ascii', 'ignore')
             elif (path_split[-1] == 'thumbnail' and post.thumbnail != '' and
                     post.thumbnail != 'self'):
                 f = urllib2.urlopen(post.thumbnail)
@@ -119,14 +118,13 @@ class redditvfs(fuse.Fuse):
             st.st_mode = stat.S_IFREG | 0444
             post = get_comment_obj(path)
             if path_split[-1] == 'content':
-                # TODO
-                formatted = ''
+                formatted = format.format_comment(post, recursive=False)
+                formatted = formatted.encode('ascii', 'ignore')
             elif path_split[-1] == 'votes':
-                # TODO votes information
-                formatted = ''
+                formatted = str(post.score) + '\n'
             elif path_split[-1] == 'flat':
-                # TODO votes information
-                formatted = ''
+                formatted = format.format_comment(post)
+                formatted = formatted.encode('ascii', 'ignore')
             st.st_size = len(formatted)
         else:
             # everything else is a file
@@ -223,10 +221,9 @@ class redditvfs(fuse.Fuse):
         path_split = path.split('/')
         path_len = len(path_split)
 
-        if path_split[1] == 'r' and path_len >= 4:
-            # Get the post or comment
-            post_id = path_split[-2].split(' ')[-1]
-            post = reddit.get_submission(submission_id=post_id)
+        if path_split[1] == 'r' and path_len == 4:
+            # Get the post
+            post = get_comment_obj(path)
 
             formatted = ''
             if path_split[-1] == 'content':
@@ -237,13 +234,25 @@ class redditvfs(fuse.Fuse):
             elif path_split[-1] == 'flat':
                 formatted = format.format_submission(post)
                 formatted = formatted.encode('ascii', 'ignore')
-            elif path_split[-1] == 'thumbnail' and post.thumbnail != '' and \
-                    post.thumbnail != 'self':
+            elif (path_split[-1] == 'thumbnail' and post.thumbnail != '' and
+                    post.thumbnail != 'self'):
                 f = urllib2.urlopen(post.thumbnail)
                 if f.getcode() == 200:
-                    formatted = f.read
+                    formatted = f.read()
             return formatted[offset:offset+size]
-        if path.split('/')[1] == 'u':
+        elif path_split[1] == 'r' and path_len >= 5:
+            # Get the comment
+            post = get_comment_obj(path)
+            if path_split[-1] == 'content':
+                formatted = format.format_comment(post, recursive=false)
+                formatted = formatted.encode('ascii', 'ignore')
+            elif path_split[-1] == 'votes':
+                formatted = str(post.score) + '\n'
+            elif path_split[-1] == 'flat':
+                formatted = format.format_comment(post)
+                formatted = formatted.encode('ascii', 'ignore')
+            return formatted[offset:offset+size]
+        elif path.split('/')[1] == 'u':
             # TODO user handling
             pass
 
