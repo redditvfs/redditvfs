@@ -129,6 +129,9 @@ class redditvfs(fuse.Fuse):
             elif path_split[-1] == 'raw_content' and post.selftext:
                 st.st_mode = stat.S_IFREG | 0666
                 formatted = post.selftext.encode('ascii', 'ignore')
+            elif path_split[-1] == 'raw_content' and post.url:
+                st.st_mode = stat.S_IFREG | 0666
+                formatted = post.url.encode('ascii', 'ignore')
             st.st_size = len(formatted)
             return st
 
@@ -356,6 +359,8 @@ class redditvfs(fuse.Fuse):
                     formatted = f.read()
             elif path_split[-1] == 'raw_content' and post.selftext:
                 formatted = post.selftext.encode('ascii', 'ignore')
+            elif path_split[-1] == 'raw_content' and post.url:
+                formatted = post.url.encode('ascii', 'ignore')
             return formatted[offset:offset+size]
         elif path_split[1] == 'r' and path_len > 5:
             # Get the comment
