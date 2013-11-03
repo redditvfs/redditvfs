@@ -97,7 +97,8 @@ class redditvfs(fuse.Fuse):
                 st.st_mode = stat.S_IFLNK | 0444
             else:
                 st.st_mode = stat.S_IFDIR | 0444
-            
+        elif (path_split[1] == 'u' and (path_len == 3 or path_len == 4)):
+            st.st_mode = stat.S_IFDIR | 0444    
         else:
             # everything else is a file
             st.st_mode = stat.S_IFREG | 0444
@@ -232,6 +233,23 @@ class redditvfs(fuse.Fuse):
                 # doesn't have any values listed.
                 if reddit.is_logged_in():
                     yield fuse.Direntry(username)
+            if path_len == 3:
+                yield fuse.Direntry('Overview')
+                yield fuse.Direntry('Submitted')
+                yield fuse.Direntry('Comments')
+                yield fuse.Direntry('Gilded')
+#            if path_len >= 4:
+#                if path_split[3] == 'Overview':
+#                    
+#                elif path_split[3] == 'Submitted':
+#                    user = r.get_redditor(path_split[2])
+#                    for c in enumerate(user.get_submitted(limit=10)):
+#                        yield fuse.Direntry(
+#
+#                elif path_split[3] == 'Comments':
+#                   
+#                elif path_split[3] == 'Gilded':
+                    
 
     def read(self, path, size, offset, fh=None):
         path_split = path.split('/')
