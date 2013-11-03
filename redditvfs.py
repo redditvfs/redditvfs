@@ -411,7 +411,11 @@ class redditvfs(fuse.Fuse):
             if len(buf_split) > 2:
                 # Self-post
                 text = '\n'.join(buf_split[1:])
-                print text
+                reddit.submit(subreddit=path_split[2], title=title, text=text)
+            else:
+                # Link
+                reddit.submit(subreddit=path_split[2], title=title,\
+                    url=buf_split[1])
             return len(buf)
 
         # fake success for editor's backup files        
