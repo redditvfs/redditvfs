@@ -4,16 +4,20 @@ import time
 import codecs
 
 wrapper = textwrap.TextWrapper()
-def format_submission(submission):
-    """return formatted submission and all comments as [String]"""
+def format_sub_content(submission):
+    """return formatted submission without comments as a String"""
     text = []
     text.append(submission.title)
-    d = get_info_dict(submission)
+    d = get_info_dict(submission)    
     formatted = "%(author)s %(time)s ago\n"\
     +"%(score)d points (%(ups)d|%(downs)d) id:%(id)s"
     text.append(formatted % d)
-    text = '\n'.join(text)
-    text = [text] + ['\n'.join(format_comment(c)) for c in submission.comments]
+    return '\n'.join(text)
+
+def format_submission(submission):
+    """return formatted submission and all comments as [String]"""
+    text = [format_sub_content(submission)] +\
+             ['\n'.join(format_comment(c)) for c in submission.comments]
     return '\n'.join(text)
 
 def get_info_dict(comsub):
@@ -55,7 +59,9 @@ def get_comment_body(comment, indent):
             width=79)
     return wrapper.wrap(comment.body)
 
+
 def get_top_10(subreddit):
+    """utility testing function"""
     r = praw.Reddit('test!')
     sub = r.get_subreddit(subreddit)
     return [post for post in sub.get_top(limit=10)]    
