@@ -20,7 +20,7 @@ import json
 fuse.fuse_python_api = (0, 2)
 
 content_stuff = ['thumbnail', 'flat', 'votes', 'content', 'reply',
-                 'raw_content']
+                 'raw_content', 'link_content']
 
 
 class redditvfs(fuse.Fuse):
@@ -145,6 +145,12 @@ class redditvfs(fuse.Fuse):
             elif path_split[-1] == 'raw_content' and post.url:
                 st.st_mode = stat.S_IFREG | 0666
                 formatted = post.url.encode('ascii', 'ignore')
+            elif path_split[-1] == 'link_content' and post.url:
+                print post.url
+                print post.thumbnail
+                f = urllib2.urlopen(post.url)
+                if f.getcode() == 200:
+                    formatted = f.read()
             st.st_size = len(formatted)
             return st
 
@@ -279,13 +285,14 @@ class redditvfs(fuse.Fuse):
 
                 # vote, content, etc
                 for file in content_stuff:
-                    if file != 'thumbnail':
+                    if file != 'thumbnail' and file != 'link_content':
                         yield fuse.Direntry(file)
                 yield fuse.Direntry("_Posted_by_" + str(post.author) + "_")
 
                 if post.thumbnail != "" and post.thumbnail != 'self':
                     # there is a thumbnail
                     yield fuse.Direntry('thumbnail')
+                    yield fuse.Direntry('link_content')
 
                 for comment in post.comments:
                     if 'body' in dir(comment):
@@ -302,7 +309,7 @@ class redditvfs(fuse.Fuse):
                 comment = get_comment_obj(path)
 
                 for file in content_stuff:
-                    if file != 'thumbnail':
+                    if file != 'thumbnail' and file != 'link_content':
                         yield fuse.Direntry(file)
                 yield fuse.Direntry('_Posted_by_' + str(comment.author)+'_')
 
@@ -373,6 +380,10 @@ class redditvfs(fuse.Fuse):
                 formatted = post.selftext.encode('ascii', 'ignore')
             elif path_split[-1] == 'raw_content' and post.url:
                 formatted = post.url.encode('ascii', 'ignore')
+            elif path_split[-1] == 'link_content' and post.url:
+                f = urllib2.urlopen(post.url)
+                if f.getcode() == 200:
+                    formatted = f.read()
             return formatted[offset:offset+size]
         elif path_split[1] == 'r' and path_len > 5:
             # Get the comment
