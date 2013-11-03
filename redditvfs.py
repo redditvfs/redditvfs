@@ -66,6 +66,13 @@ class redditvfs(fuse.Fuse):
         st.st_mtime = st.st_atime
         st.st_ctime = st.st_atime
 
+        # pretend to accept editor backup files so they don't complain,
+        # although we don't do anything with it.
+        last_word = path.split(' ')[-1].split('/')[-1]
+        if last_word.find('.') != -1 or last_word.find('~') != -1:
+            st.st_mode = stat.S_IFDIR | 0777
+            return st
+
         # everything defaults to being a normal file unless explicitly set
         # otherwise
         st.st_mode = stat.S_IFREG | 0444
@@ -403,6 +410,7 @@ def get_comment_obj(path):
             if comment.id == path_split[level].split(' ')[-1]:
                 break
     return comment
+    # /u/ilar/Overview/I like how you all are suggesting all these redicu c94iwxm
 
 def login_get_username(config):
     """
