@@ -105,8 +105,7 @@ class redditvfs(fuse.Fuse):
                     formatted = format.format_sub_content(post)
                     formatted = formatted.encode('ascii', 'ignore')
                 elif path_split[-1] == 'votes':
-                    # TODO votes information
-                    formatted = ''
+                    formatted = str(post.score) + '\n'
                 elif path_split[-1] == 'flat':
                     formatted = format.format_submission(post)
                     formatted = formatted.encode('ascii', 'ignore')
@@ -222,8 +221,7 @@ class redditvfs(fuse.Fuse):
                 formatted = format.format_sub_content(post)
                 formatted = formatted.encode('ascii', 'ignore')
             elif path_split[-1] == 'votes':
-                # TODO votes information
-                pass
+                formatted = str(post.score) + '\n'
             elif path_split[-1] == 'flat':
                 formatted = format.format_submission(post)
                 formatted = formatted.encode('ascii', 'ignore')
