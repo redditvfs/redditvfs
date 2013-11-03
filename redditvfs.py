@@ -56,6 +56,7 @@ class redditvfs(fuse.Fuse):
         """
         returns stat info for file, such as permissions and access times.
         """
+        print "getattr: "  + path
         # default nlink and time info
         st = fuse.Stat()
         st.st_nlink = 2
@@ -88,35 +89,47 @@ class redditvfs(fuse.Fuse):
         elif path_split[1] == 'r' and path_len == 4:
             # r/*/* - submissions
             st.st_mode = stat.S_IFDIR | 0444
+        elif (path_split[1] == 'r' and path_len == 4 and path_split[-1] in
+                ['thumbnail', 'flat', 'votes', 'content']):
+            # content stuff in submission
+            st.st_mode = stat.S_IFREG | 0444
+            post = get_comment_obj(path)
+            if path_split[-1] == 'content':
+                # TODO
+                formatted = ''
+            elif path_split[-1] == 'votes':
+                # TODO votes information
+                formatted = ''
+            elif path_split[-1] == 'flat':
+                # TODO votes information
+                formatted = ''
+            elif path_split[-1] == 'thumbnail' and post.thumbnail != '' and post.thumbnail != 'self':
+                f = urllib2.urlopen(post.thumbnail)
+                if f.getcode() == 200:
+                    formatted = f.read()
+            st.st_size = len(formatted)
         elif (path_split[1] == 'r' and path_len > 4 and path_split[-1] not in
                 ['thumbnail', 'flat', 'votes', 'content']):
             # comment post
             st.st_mode = stat.S_IFDIR | 0444
+        elif (path_split[1] == 'r' and path_len > 4 and path_split[-1] in
+                ['thumbnail', 'flat', 'votes', 'content']):
+            # content stuff in comment post
+            st.st_mode = stat.S_IFREG | 0444
+            post = get_comment_obj(path)
+            if path_split[-1] == 'content':
+                # TODO
+                formatted = ''
+            elif path_split[-1] == 'votes':
+                # TODO votes information
+                formatted = ''
+            elif path_split[-1] == 'flat':
+                # TODO votes information
+                formatted = ''
+            st.st_size = len(formatted)
         else:
             # everything else is a file
             st.st_mode = stat.S_IFREG | 0444
-
-            if path_split[1] == 'r':
-                # Get the post or comment
-                post_id = path_split[-2].split(' ')[-1]
-                post = reddit.get_submission(submission_id=post_id)
-
-                if path_split[-1] == 'content':
-                    formatted = format.format_sub_content(post)
-                    formatted = formatted.encode('ascii', 'ignore')
-                elif path_split[-1] == 'votes':
-                    # TODO votes information
-                    formatted = ''
-                elif path_split[-1] == 'flat':
-                    formatted = format.format_submission(post)
-                    formatted = formatted.encode('ascii', 'ignore')
-                elif path_split[-1] == 'thumbnail' and post.thumbnail != '' and \
-                        post.thumbnail != 'self':
-                    f = urllib2.urlopen(post.thumbnail)
-                    if f.getcode() == 200:
-                        formatted = f.read()
-                #formatted.encode('ascii', 'ignore')
-                st.st_size = len(formatted)
         return st
 
     def readdir(self, path, offset):
@@ -163,12 +176,13 @@ class redditvfs(fuse.Fuse):
                     yield fuse.Direntry(filename)
             elif path_len == 4:
                 # a submission in a subreddit
-                post_id = path_split[3].split(' ')[-1]
-                post = reddit.get_submission(submission_id = post_id)
 
                 yield fuse.Direntry('flat')
                 yield fuse.Direntry('votes')
                 yield fuse.Direntry('content')
+
+                post_id = path_split[3].split(' ')[-1]
+                post = reddit.get_submission(submission_id = post_id)
 
                 if post.thumbnail != "" and post.thumbnail != 'self':
                     # there is a thumbnail
@@ -186,22 +200,12 @@ class redditvfs(fuse.Fuse):
                 # is a good way to get a submission from the id and to walk
                 # down the tree, so doing that as a work-around.
 
-                post_id = path_split[3].split(' ')[-1]
-                post = reddit.get_submission(submission_id = post_id)
-
                 yield fuse.Direntry('flat')
                 yield fuse.Direntry('votes')
                 yield fuse.Direntry('content')
 
-                for comment in post.comments:
-                    if comment.id == path_split[4].split(' ')[-1]:
-                        break
-                level = 4
-                while level < path_len - 1:
-                    level += 1
-                    for comment in comment.replies:
-                        if comment.id == path_split[level].split(' ')[-1]:
-                            break
+                comment = get_comment_obj(path)
+
                 for reply in comment.replies:
                     if 'body' in dir(reply):
                         yield fuse.Direntry(
@@ -245,6 +249,27 @@ class redditvfs(fuse.Fuse):
 
         return -errno.ENOSYS
 
+def get_comment_obj(path):
+    """
+    given a filesystem path, returns a praw comment object
+    """
+    # Can't find a good way to get a comment from an id, but there
+    # is a good way to get a submission from the id and to walk
+    # down the tree, so doing that as a work-around.
+    path_split = path.split('/')
+    path_len = len(path_split)
+    post_id = path_split[3].split(' ')[-1]
+    post = reddit.get_submission(submission_id = post_id)
+    for comment in post.comments:
+        if comment.id == path_split[4].split(' ')[-1]:
+            break
+    level = 4
+    while level < path_len - 1:
+        level += 1
+        for comment in comment.replies:
+            if comment.id == path_split[level].split(' ')[-1]:
+                break
+    return comment
 
 def login_get_username(config):
     """
