@@ -120,7 +120,8 @@ class redditvfs(fuse.Fuse):
                 formatted = format.format_submission(post)
                 formatted = formatted.encode('ascii', 'ignore')
             elif (path_split[-1] == 'thumbnail' and 'thumbnail' in dir(post)
-                    and post.thumbnail != '' and post.thumbnail != 'self'):
+                    and post.thumbnail != '' and post.thumbnail != 'self'
+                    and post.thumbnail != 'default'):
                 f = urllib2.urlopen(post.thumbnail)
                 if f.getcode() == 200:
                     formatted = f.read()
@@ -275,8 +276,9 @@ class redditvfs(fuse.Fuse):
                 yield fuse.Direntry("_Posted_by_" + str(post.author) + "_")
 
                 if post.thumbnail != "" and post.thumbnail != 'self':
-                    # there is a thumbnail
-                    yield fuse.Direntry('thumbnail')
+                    # there is link content, maybe a thumbnail
+                    if post.thumbnail != 'default':
+                        yield fuse.Direntry('thumbnail')
                     yield fuse.Direntry('link_content')
 
                 for comment in post.comments:
@@ -353,7 +355,7 @@ class redditvfs(fuse.Fuse):
                 formatted = format.format_submission(post)
                 formatted = formatted.encode('ascii', 'ignore')
             elif (path_split[-1] == 'thumbnail' and post.thumbnail != '' and
-                    post.thumbnail != 'self'):
+                    post.thumbnail != 'self' and post.thumbnail != 'default'):
                 f = urllib2.urlopen(post.thumbnail)
                 if f.getcode() == 200:
                     formatted = f.read()
