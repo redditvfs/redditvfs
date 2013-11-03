@@ -9,7 +9,7 @@ def format_sub_content(submission):
     text = []
     indent = 3
     wrap = textwrap.TextWrapper(initial_indent=indent*' '+'|', subsequent_indent=indent*' '+'|')
-    br = indent * ' ' + '-' * (79-indent)
+    br = indent * ' ' + '-' * (79-indent) + '\n'
     text.append(br)
     text += wrap.wrap(submission.title)
     text.append(br)
@@ -26,7 +26,7 @@ def format_sub_content(submission):
 def format_submission(submission):
     """return formatted submission and all comments as [String]"""
     text = [format_sub_content(submission)] +\
-             ['\n'.join(format_comment(c)) for c in submission.comments]
+             [format_comment(c) for c in submission.comments]
     return '\n'.join(text)+'\n'
 
 def get_info_dict(comsub):
@@ -40,19 +40,19 @@ def get_info_dict(comsub):
     d['id'] = comsub.id
     return d
 
-def format_comment(comment, depth=0, cutoff=-1, recursive=True):
+def format_comment(comment, depth=0, cutoff=-1, recursive=True, top=-1):
     """returns formatted comment + children as a [String]""" 
     indent = 2
     base_ind=4
     indent += depth * base_ind
     if depth==cutoff:
-        return [' '*indent + '...']
+        return ' '*indent + '...\n'
     if isinstance(comment, praw.objects.MoreComments):
-        return [' '*indent + "More..."]
-    text = [get_comment_header(comment, indent)] 
+        return ' '*indent + 'More...\n'
+    text = get_comment_header(comment, indent) 
     text += get_comment_body(comment,indent)
     if recursive:
-        for child in comment.replies:
+        for i, child in enumerate(comment.replies):
             text += format_comment(child, depth+1)
     return text  
 
@@ -63,15 +63,15 @@ def get_comment_header(comment, indent):
     formatted = indent * '-'+ "|%(author)s %(time)s ago\n"\
     + indent * ' ' + "|%(score)d points (%(ups)d|%(downs)d) id:%(id)s"
     d = get_info_dict(comment)
-    return '\n'.join([wrap, formatted % d, wrap])
+    return '\n'.join([wrap, formatted % d, wrap]) + '\n'
 
 def get_comment_body(comment, indent):
     """returns formatted body of comment as [String]"""
-    wrap = indent * ' ' + (78- indent) * '-'
+    wrap = indent * ' ' + (78- indent) * '-' + '\n'
     indent = indent* ' '
     wrapper = textwrap.TextWrapper(initial_indent=indent + '|',
          subsequent_indent=indent + '|',width=79)
-    return wrapper.wrap(comment.body)+[wrap]
+    return '\n'.join(wrapper.wrap(comment.body)+[wrap])
 
 
 def get_top_10(subreddit):
