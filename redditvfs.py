@@ -17,6 +17,8 @@ import format
 
 fuse.fuse_python_api = (0, 2)
 
+content_stuff = ['thumbnail', 'flat', 'votes', 'content']
+
 
 def sanitize_filepath(path):
     """
@@ -90,7 +92,7 @@ class redditvfs(fuse.Fuse):
             # r/*/* - submissions
             st.st_mode = stat.S_IFDIR | 0444
         elif (path_split[1] == 'r' and path_len == 5 and path_split[-1] in
-                ['thumbnail', 'flat', 'votes', 'content']):
+                content_stuff):
             # content stuff in submission
             st.st_mode = stat.S_IFREG | 0444
             post_id = path_split[3].split(' ')[-1]
@@ -112,7 +114,7 @@ class redditvfs(fuse.Fuse):
                     formatted = f.read()
             st.st_size = len(formatted)
         elif (path_split[1] == 'r' and path_len > 4 and path_split[-1] not in
-                ['thumbnail', 'flat', 'votes', 'content']):
+                content_stuff):
             # comment post or user link
             if path.split('/')[-1:][0][-1:] == '_':
                 #symlink
@@ -122,7 +124,10 @@ class redditvfs(fuse.Fuse):
         elif (path_split[1] == 'u' and (path_len == 3 or path_len == 4)):
             st.st_mode = stat.S_IFDIR | 0444
         elif (path_split[1] == 'r' and path_len > 5 and path_split[-1] in
-                ['thumbnail', 'flat', 'votes', 'content']):
+                content_stuff):
+            st.st_mode = stat.S_IFDIR | 0444
+        elif (path_split[1] == 'u' and path_len == 5):
+            st.st_mode = stat.S_IFLNK | 0444
             # content stuff in comment post
             st.st_mode = stat.S_IFREG | 0444
             post = get_comment_obj(path)
@@ -142,14 +147,25 @@ class redditvfs(fuse.Fuse):
         return st
 
     def readlink(self, path):
-        numdots = len(path.split('/'))-2
+        numdots = len(path.split('/'))
         dots=''
         if path.split('/')[-1:][0][-1:] == '_' and len(path.split('/'))>=5:
             #if this is a userlink
+            numdots-=2
             while (numdots>0):
                 dots+='../'
                 numdots-=1
             return dots+'u/'+path.split('/')[-1:][0][11:-1]
+        if path.split('/')[1] == 'u' and len(path.split('/')) == 5:
+            numdots-=2
+            while (numdots > 0):
+                dots+='../'
+                numdots-=1
+            sub =  get_comment_obj(path).submission()
+            #TODO fix this into the actual path.
+            return path
+            #return dots+'r/' +subname + '/'+postname+'/'+path.split('/')[-1:][0]
+            
 
     def readdir(self, path, offset):
         """
@@ -242,19 +258,20 @@ class redditvfs(fuse.Fuse):
                 yield fuse.Direntry('Overview')
                 yield fuse.Direntry('Submitted')
                 yield fuse.Direntry('Comments')
-                yield fuse.Direntry('Gilded')
-#            if path_len >= 4:
-#                if path_split[3] == 'Overview':
-#                    
-#                elif path_split[3] == 'Submitted':
-#                    user = r.get_redditor(path_split[2])
-#                    for c in enumerate(user.get_submitted(limit=10)):
-#                        yield fuse.Direntry(
-#
-#                elif path_split[3] == 'Comments':
-#                   
-#                elif path_split[3] == 'Gilded':
-                    
+            if path_len == 4:
+                user = reddit.get_redditor(path_split[2])
+                if path_split[3] == 'Overview':
+                    for c in enumerate(user.get_overview(limit=10)):
+                        yield fuse.Direntry(sanitize_filepath(c[1].body[0:pathmax]
+                            + ' ' + c[1].id))
+                elif path_split[3] == 'Submitted':
+                    for c in enumerate(user.get_submitted(limit=10)):
+                        yield fuse.Direntry(sanitize_filepath(c[1].body[0:pathmax]
+                            + ' ' + c[1].id))
+                elif path_split[3] == 'Comments':
+                    for c in enumerate(user.get_comments(limit=10)):
+                        yield fuse.Direntry(sanitize_filepath(c[1].body[0:pathmax]
+                            + ' ' + c[1].id))
 
     def read(self, path, size, offset, fh=None):
         path_split = path.split('/')
@@ -338,7 +355,11 @@ def get_comment_obj(path):
         if comment.id == path_split[4].split(' ')[-1]:
             break
     level = 4
-    while level < path_len - 1:
+    if path_split[-1] in content_stuff:
+        adjust = 2
+    else:
+        adjust = 1
+    while level < path_len - adjust:
         level += 1
         for comment in comment.replies:
             if comment.id == path_split[level].split(' ')[-1]:
