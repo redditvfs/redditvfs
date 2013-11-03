@@ -17,6 +17,8 @@ import format
 
 fuse.fuse_python_api = (0, 2)
 
+content_stuff = ['thumbnail', 'flat', 'votes', 'content']
+
 
 def sanitize_filepath(path):
     """
@@ -90,7 +92,7 @@ class redditvfs(fuse.Fuse):
             # r/*/* - submissions
             st.st_mode = stat.S_IFDIR | 0444
         elif (path_split[1] == 'r' and path_len == 5 and path_split[-1] in
-                ['thumbnail', 'flat', 'votes', 'content']):
+                content_stuff):
             # content stuff in submission
             st.st_mode = stat.S_IFREG | 0444
             post_id = path_split[3].split(' ')[-1]
@@ -112,7 +114,7 @@ class redditvfs(fuse.Fuse):
                     formatted = f.read()
             st.st_size = len(formatted)
         elif (path_split[1] == 'r' and path_len > 4 and path_split[-1] not in
-                ['thumbnail', 'flat', 'votes', 'content']):
+                content_stuff):
             # comment post or user link
             if path.split('/')[-1:][0][-1:] == '_':
                 #symlink
@@ -120,11 +122,12 @@ class redditvfs(fuse.Fuse):
             else:
                 st.st_mode = stat.S_IFDIR | 0444
         elif (path_split[1] == 'u' and (path_len == 3 or path_len == 4)):
-            st.st_mode = stat.S_IFDIR | 0444    
+            st.st_mode = stat.S_IFDIR | 0444
+        elif (path_split[1] == 'r' and path_len > 5 and path_split[-1] in
+                content_stuff):
+            st.st_mode = stat.S_IFDIR | 0444
         elif (path_split[1] == 'u' and path_len == 5):
             st.st_mode = stat.S_IFLNK | 0444
-        elif (path_split[1] == 'r' and path_len > 4 and path_split[-1] in
-                ['thumbnail', 'flat', 'votes', 'content']):
             # content stuff in comment post
             st.st_mode = stat.S_IFREG | 0444
             post = get_comment_obj(path)
@@ -316,7 +319,11 @@ def get_comment_obj(path):
         if comment.id == path_split[4].split(' ')[-1]:
             break
     level = 4
-    while level < path_len - 1:
+    if path_split[-1] in content_stuff:
+        adjust = 2
+    else:
+        adjust = 1
+    while level < path_len - adjust:
         level += 1
         for comment in comment.replies:
             if comment.id == path_split[level].split(' ')[-1]:
