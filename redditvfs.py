@@ -73,8 +73,6 @@ class redditvfs(fuse.Fuse):
         # useful information
         path_split = path.split('/')
         path_len = len(path_split)
-        print path_split
-        print path_len
 
         # "." and ".."
         if path_split[-1] == '.' or path_split[-1] == '..':
@@ -118,14 +116,13 @@ class redditvfs(fuse.Fuse):
             post = reddit.get_submission(submission_id = post_id)
             formatted = ''
             if path_split[-1] == 'content':
-                # TODO
-                pass
+                formatted = format.format_sub_content(post)
+                formatted = formatted.encode('ascii', 'ignore')
             elif path_split[-1] == 'votes':
-                # TODO votes information
-                pass
+                formatted = str(post.score) + '\n'
             elif path_split[-1] == 'flat':
-                # TODO votes information
-                pass
+                formatted = format.format_submission(post)
+                formatted = formatted.encode('ascii', 'ignore')
             elif (path_split[-1] == 'thumbnail' and 'thumbnail' in dir(post)
                     and post.thumbnail != '' and post.thumbnail != 'self'):
                 f = urllib2.urlopen(post.thumbnail)
@@ -156,6 +153,17 @@ class redditvfs(fuse.Fuse):
         if (path_split[1] == 'r' and path_len > 5 and path_split[-1] in
                 content_stuff):
             st.st_mode = stat.S_IFREG | 0444
+            post = get_comment_obj(path)
+            formatted = ''
+            if path_split[-1] == 'content':
+                formatted = format.format_comment(post, recursive=False)
+                formatted = formatted.encode('ascii', 'ignore')
+            elif path_split[-1] == 'votes':
+                formatted = str(post.score) + '\n'
+            elif path_split[-1] == 'flat':
+                formatted = format.format_comment(post, recursive=True)
+                formatted = formatted.encode('ascii', 'ignore')
+            st.st_size = len(formatted)
             return st
 
         # u/* - user
@@ -172,7 +180,6 @@ class redditvfs(fuse.Fuse):
         elif (path_split[1] == 'u' and path_len == 5):
             st.st_mode = stat.S_IFLNK | 0777
             return st
-
 
     def readlink(self, path):
         numdots = len(path.split('/'))
@@ -305,10 +312,10 @@ class redditvfs(fuse.Fuse):
         path_split = path.split('/')
         path_len = len(path_split)
 
-        if path_split[1] == 'r' and path_len >= 4:
-            # Get the post or comment
-            post_id = path_split[-2].split(' ')[-1]
-            post = reddit.get_submission(submission_id=post_id)
+        if path_split[1] == 'r' and path_len == 5:
+            # Get the post
+            post_id = path_split[3].split(' ')[-1]
+            post = reddit.get_submission(submission_id = post_id)
 
             formatted = ''
             if path_split[-1] == 'content':
@@ -319,17 +326,56 @@ class redditvfs(fuse.Fuse):
             elif path_split[-1] == 'flat':
                 formatted = format.format_submission(post)
                 formatted = formatted.encode('ascii', 'ignore')
-            elif path_split[-1] == 'thumbnail' and post.thumbnail != '' and \
-                    post.thumbnail != 'self':
+            elif (path_split[-1] == 'thumbnail' and post.thumbnail != '' and
+                    post.thumbnail != 'self'):
                 f = urllib2.urlopen(post.thumbnail)
                 if f.getcode() == 200:
-                    formatted = f.read
+                    formatted = f.read()
             return formatted[offset:offset+size]
-        if path.split('/')[1] == 'u':
+        elif path_split[1] == 'r' and path_len > 5:
+            # Get the comment
+            post = get_comment_obj(path)
+            if path_split[-1] == 'content':
+                formatted = format.format_comment(post, recursive=False)
+                formatted = formatted.encode('ascii', 'ignore')
+            elif path_split[-1] == 'votes':
+                formatted = str(post.score) + '\n'
+            elif path_split[-1] == 'flat':
+                formatted = format.format_comment(post, recursive=True)
+                formatted = formatted.encode('ascii', 'ignore')
+            return formatted[offset:offset+size]
+        elif path.split('/')[1] == 'u':
             # TODO user handling
             pass
 
         return -errno.ENOSYS
+
+    def truncate(self, path, len):
+        """
+        there is no situation where this will actually be used
+        """
+        pass
+
+    def write(self, path, buf, offset, fh=None):
+        path_split = path.split('/')
+        path_len = len(path_split)
+        if path_split[1] == 'r' and path_len >= 4:
+            # Get the post or comment
+            if path_len > 5:
+                post = get_comment_obj(path)
+            else:
+                post_id = path_split[-2].split(' ')[-1]
+                post = reddit.get_submission(submission_id=post_id)
+
+            if reddit.is_logged_in() and path_split[-1] == 'votes':
+                vote = int(buf)
+                if vote == 0:
+                    post.clear_vote()
+                elif vote > 0:
+                    post.upvote()
+                elif vote < 0:
+                    post.downvote()
+        return len(buf)
 
 def get_comment_obj(path):
     """
