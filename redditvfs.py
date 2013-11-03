@@ -217,6 +217,7 @@ class redditvfs(fuse.Fuse):
             post_id = path_split[-2].split(' ')[-1]
             post = reddit.get_submission(submission_id=post_id)
 
+            formatted = ''
             if path_split[-1] == 'content':
                 formatted = format.format_sub_content(post)
                 formatted = formatted.encode('ascii', 'ignore')
@@ -226,12 +227,12 @@ class redditvfs(fuse.Fuse):
             elif path_split[-1] == 'flat':
                 formatted = format.format_submission(post)
                 formatted = formatted.encode('ascii', 'ignore')
-                return formatted[offset:offset+size]
             elif path_split[-1] == 'thumbnail' and post.thumbnail != '' and \
                     post.thumbnail != 'self':
                 f = urllib2.urlopen(post.thumbnail)
                 if f.getcode() == 200:
-                    return f.read()[offset:offset+size]
+                    formatted = f.read
+            return formatted[offset:offset+size]
         if path.split('/')[1] == 'u':
             # TODO user handling
             pass
