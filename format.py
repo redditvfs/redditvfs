@@ -8,13 +8,15 @@ def format_submission(submission):
     """return formatted submission and all comments as [String]"""
     text = []
     text.append(submission.title)
-    text.append(get_info_str(submission))
-
+    d = get_info_dict(submission)
+    formatted = "%(author)s %(time)s ago\n"\
+    +"%(score)d points (%(ups)d|%(downs)d) id:%(id)s"
+    text.append(formatted % d)
     text = '\n'.join(text)
     text = [text] + ['\n'.join(format_comment(c)) for c in submission.comments]
     return '\n'.join(text)
 
-def get_info_str(comsub):
+def get_info_dict(comsub):
     d = {}
     d['author'] = comsub.author if comsub.author else "DELETED"
     d['time'] = time.ctime(comsub.created)
@@ -22,7 +24,7 @@ def get_info_str(comsub):
     d['ups'] = comsub.ups
     d['downs'] = comsub.downs
     d['id'] = comsub.id
-    return "%(author)s %(score)d points %(time)s ago"\
+    return d
     " (%(ups)d|%(downs)d) id:%(id)s" % d
 
 def format_comment(comment, depth=0):
@@ -41,7 +43,10 @@ def format_comment(comment, depth=0):
 
 def get_comment_header(comment, indent):
     """return formatted header of post"""
-    return indent * '-' + get_info_str(comment)
+    formatted = indent * '-'+ "%(author)s %(time)s ago\n"\
+    + indent * ' ' + "%(score)d points (%(ups)d|%(downs)d) id:%(id)s"
+    d = get_info_dict(comment)
+    return formatted % d 
 
 def get_comment_body(comment, indent):
     """returns formatted body of comment as [String]"""
