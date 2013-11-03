@@ -43,8 +43,16 @@ class redditvfs(fuse.Fuse):
         st.st_ctime = st.st_atime
         # set if filetype and permissions
         if path.split('/')[-1] == '.' or path.split('/')[-1] == '..':
+            # . and ..
             st.st_mode = stat.S_IFDIR | 0444
         elif path in ['/', '/u', '/r']:
+            # top-level directories
+            st.st_mode = stat.S_IFDIR | 0444
+        elif len(path.split('/')) == 3 and path.split('/')[1] == 'r':
+            # r/*/ - subreddits
+            st.st_mode = stat.S_IFDIR | 0444
+        elif len(path.split('/')) == 4 and path.split('/')[1] == 'r':
+            # r/*/* - posts
             st.st_mode = stat.S_IFDIR | 0444
         else:
             st.st_mode = stat.S_IFREG | 0444
@@ -58,23 +66,30 @@ class redditvfs(fuse.Fuse):
         # Every directory has '.' and '..'
         yield fuse.Direntry('.')
         yield fuse.Direntry('..')
+        r = praw.Reddit(user_agent='redditvfs')
 
-        # the root just has high-level items:
-        # - /r (for subreddits)
-        # - /u (for users)
         if path == '/':
+            # top-level directory
             yield fuse.Direntry('u')
             yield fuse.Direntry('r')
         elif path == '/r':
-            # if user is logged in, populate with get_my_subreddits
-            # otherwise, default to frontpage
-            # TODO: check if logged in
-            # TODO: figure out how to get non-logged-in default subreddits,
-            # falling back to get_popular_subreddits
-            r = praw.Reddit(user_agent="redditvfs")
+            # list of subreddits
             for subreddit in r.get_popular_subreddits():
                 dirname = sanitize_filepath(subreddit.url.split('/')[2])
                 yield fuse.Direntry(dirname)
+        elif len(path.split('/')) == 3 and path.split('/')[1] == 'r':
+            # posts in subreddits
+            subreddit = path.split('/')[2]
+            # TODO: maybe not hardcode limit?
+            for post in r.get_subreddit(subreddit).get_hot(limit=10):
+                filename = sanitize_filepath(sanitize_filepath(post.title)
+                        + ' ' + post.id)
+                yield fuse.Direntry(filename)
+        elif len(path.split('/')) == 4 and path.split('/')[1] == 'r':
+            # a post in a subreddit
+            post_id = path.split(' ')[-1]
+            post = r.get_submission(submission_id = post_id)
+            # TODO: get thumbnail
 
 
 def login_get_username(config):
