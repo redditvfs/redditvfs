@@ -1,8 +1,9 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 """
-This is a demo/proof of concept for the reddit virtual filesystem
-quick-and-dirty
+This is a reddit virtual filesystem.  Provide a filepath where to mount this
+filesystem as an argument and, optionally, an "-f" flag to keep it from
+daemonizing.
 """
 import errno
 import fuse
@@ -23,6 +24,10 @@ content_stuff = ['thumbnail', 'flat', 'votes', 'content', 'reply',
 
 
 class redditvfs(fuse.Fuse):
+    """
+    The filesystem calls which could be utilized in redditvfs are implemented
+    here.
+    """
     def __init__(self, reddit=None, username=None, *args, **kw):
         fuse.Fuse.__init__(self, *args, **kw)
 
@@ -30,6 +35,10 @@ class redditvfs(fuse.Fuse):
             raise Exception('reddit must be set')
 
     def rmdir(self, path):
+        """
+        One can run "rmdir" on r/<subreddit>.sub" to unsubscribe from the
+        directory.
+        """
         if len(path.split('/')) == 3 and reddit.is_logged_in:
             reddit.unsubscribe(path.split('/')[-1:][0])
             return
@@ -37,6 +46,10 @@ class redditvfs(fuse.Fuse):
             return -errno.ENOSYS
 
     def mkdir(self, path, mode):
+        """
+        One can run "mmkdir" on r/<subreddit>.sub" to subscribe to the
+        directory.
+        """
         if len(path.split('/')) == 3 \
                 and path.split('/')[-1:][0][-4:] == '.sub' \
                 and reddit.is_logged_in:
@@ -47,7 +60,7 @@ class redditvfs(fuse.Fuse):
 
     def getattr(self, path):
         """
-        returns stat info for file, such as permissions and access times.
+        Returns stat info for file, such as permissions and access times.
         """
 
         # default nlink and time info
@@ -191,6 +204,10 @@ class redditvfs(fuse.Fuse):
             return st
 
     def readlink(self, path):
+        """
+        Symlinks are used to redirect some references to one thing to a single
+        implementation.  The logic to dereference symlinks is here.
+        """
         numdots = len(path.split('/'))
         dots = ''
         if path.split('/')[-1:][0][-1:] == '_' and len(path.split('/')) >= 5:
@@ -201,27 +218,26 @@ class redditvfs(fuse.Fuse):
                 numdots -= 1
             return dots + 'u/' + path.split('/')[-1:][0][11:-1]
         if path.split('/')[1] == 'u' and len(path.split('/')) == 5:
-            numdots -=2
+            numdots -= 2
             while (numdots > 0):
                 dots += '../'
                 numdots -= 1
             comment_id = path.split(' ')[-1]
             sub = str('http://www.reddit.com/comments/'+comment_id)
-            sub=reddit.get_submission(sub)
+            sub = reddit.get_submission(sub)
             subname = str(sub.subreddit)
             subid = str(sub.id)
             return str(dots + 'r/' + subname + '/' + subid)
 
     def readdir(self, path, offset):
         """
-        returns a list of directories in requested path
+        Returns a list of directories in requested path
         """
 
         # Every directory has '.' and '..'
         yield fuse.Direntry('.')
         yield fuse.Direntry('..')
 
-        # TODO: maybe make this configurable later
         # cut-off length on items with id to make things usable for end-user
         pathmax = 50
 
@@ -236,8 +252,6 @@ class redditvfs(fuse.Fuse):
             if path_len == 2:
                 # if user is logged in, populate with get_my_subreddits
                 # otherwise, default to frontpage
-                # TODO: figure out how to get non-logged-in default subreddits,
-                # falling back to get_popular_subreddits
                 if reddit.is_logged_in():
                     for subreddit in reddit.get_my_subreddits():
                         url_part = subreddit.url.split('/')[2]
@@ -251,7 +265,6 @@ class redditvfs(fuse.Fuse):
             elif path_len == 3:
                 # posts in subreddits
                 subreddit = path_split[2]
-                # TODO: maybe not hardcode limit?
                 for post in reddit.get_subreddit(subreddit).get_hot(limit=20):
                     filename = sanitize_filepath(post.title[0:pathmax]
                                                  + ' ' + post.id)
@@ -330,6 +343,10 @@ class redditvfs(fuse.Fuse):
                         yield fuse.Direntry(sanitize_filepath(c_part))
 
     def read(self, path, size, offset, fh=None):
+        """
+        Is used to get contents of posts, comments, etc from reddit to the end
+        user.
+        """
         path_split = path.split('/')
         path_len = len(path_split)
 
@@ -371,9 +388,6 @@ class redditvfs(fuse.Fuse):
             elif path_split[-1] == 'raw_content':
                 formatted = post.body.encode('ascii', 'ignore')
             return formatted[offset:offset+size]
-        elif path.split('/')[1] == 'u':
-            # TODO user handling
-            pass
 
         return -errno.ENOSYS
 
@@ -432,7 +446,7 @@ class redditvfs(fuse.Fuse):
         if path_split[1] == 'r' and path_len == 4 and\
                 path_split[-1] == 'post':
             buf_split = buf.split('\n')
-            title = bUf_split[0]
+            title = buf_split[0]
             if len(buf_split) > 2:
                 # Self-post
                 text = '\n'.join(buf_split[1:])
@@ -459,6 +473,10 @@ class redditvfs(fuse.Fuse):
         return len(buf)
 
     def create(self, path, flags, mode):
+        """
+        No part of the redditvfs API actually utilizes create() - it is always
+        an error.
+        """
         return errno.EPERM
 
     def unlink(self, path):
