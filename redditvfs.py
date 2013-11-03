@@ -396,6 +396,17 @@ class redditvfs(fuse.Fuse):
             post.reply(buf)
             return len(buf)
 
+        # Write a new post
+        if path_split[1] == 'r' and path_len == 4 and\
+                path_split[-1] == 'post':
+            buf_split = buf.split('\n')
+            title = buf_split[0]
+            if len(buf_split) > 2:
+                # Self-post
+                text = '\n'.join(buf_split[1:])
+                print text
+            return len(buf)
+
         # fake success for editor's backup files        
         return len(buf)
 
