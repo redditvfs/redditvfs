@@ -249,6 +249,28 @@ class redditvfs(fuse.Fuse):
 
         return -errno.ENOSYS
 
+    def truncate(self, path, len):
+        """
+        there is no situation where this will actually be used
+        """
+        pass
+
+    def write(self, path, buf, offset, fh=None):
+        path_split = path.split('/')
+        path_len = len(path_split)
+        if path_split[1] == 'r' and path_len >= 4:
+            # Get the post or comment
+            post_id = path_split[-2].split(' ')[-1]
+            post = reddit.get_submission(submission_id=post_id)
+
+            if reddit.is_logged_in() and path_split[-1] == 'votes':
+                if buf == 0:
+                    post.clear_vote()
+                elif buf > 0:
+                    post.upvote()
+                elif buf < 0:
+                    post.downvote()
+
 def get_comment_obj(path):
     """
     given a filesystem path, returns a praw comment object
