@@ -9,18 +9,23 @@ import fuse
 import stat
 import time
 import praw
+import getpass
+import ConfigParser
+import sys
 
 fuse.fuse_python_api = (0, 2)
+
 
 def sanitize_filepath(path):
     """
     Converts provided path to legal UNIX filepaths.
     """
     # '/' is illegal
-    path = path.replace('/','_')
+    path = path.replace('/', '_')
     # Direntry() doesn't seem to like non-ascii
     path = path.encode('ascii', 'ignore')
     return path
+
 
 class redditvfs(fuse.Fuse):
     def __init__(self, *args, **kw):
@@ -39,7 +44,7 @@ class redditvfs(fuse.Fuse):
         # set if filetype and permissions
         if path.split('/')[-1] == '.' or path.split('/')[-1] == '..':
             st.st_mode = stat.S_IFDIR | 0444
-        elif path in ['/', '/u', '/r' ]:
+        elif path in ['/', '/u', '/r']:
             st.st_mode = stat.S_IFDIR | 0444
         else:
             st.st_mode = stat.S_IFREG | 0444
@@ -71,7 +76,54 @@ class redditvfs(fuse.Fuse):
                 dirname = sanitize_filepath(subreddit.url.split('/')[2])
                 yield fuse.Direntry(dirname)
 
+
+def login_get_username(config):
+    try:
+        username = config.get('login', 'username')
+    except Exception, e:
+        # Prompt for username
+        username = raw_input("Username: ")
+        pass
+    return username
+
+
+def login_get_password(config):
+    try:
+        password = config.get('login', 'password')
+    except Exception, e:
+        # Prompt for password
+        password = getpass.getpass()
+        pass
+    return password
+
+
 if __name__ == '__main__':
+    # Create a reddit object from praw
+    reddit = praw.Reddit(user_agent='redditvfs')
+
+    # Login only if a configuration file is present
+    if '-c' in sys.argv:
+        # Remove '-c' from sys.argv
+        sys.argv.remove('-c')
+
+        # User wants to use the config file, create the parser
+        config = ConfigParser.RawConfigParser(allow_no_value=True)
+
+        # Check for default login
+        try:
+            config.read('~/.redditvfs.conf')
+        except Exception, e:
+            pass
+        finally:
+            username = login_get_username(config=config)
+            password = login_get_password(config=config)
+            try:
+                reddit.login(username=username, password=password)
+                print 'Logged in as: ' + username
+            except Exception, e:
+                print e
+                print 'Failed to login'
+
     fs = redditvfs()
     fs.parse(errex=1)
     fs.main()
