@@ -31,7 +31,7 @@ class redditvfs(fuse.Fuse):
     def __init__(self, reddit=None, *args, **kw):
         fuse.Fuse.__init__(self, *args, **kw)
 
-	if reddit is None:
+        if reddit is None:
             raise Exception('reddit must be set')
 
     def mkdir(self, path, mode):
