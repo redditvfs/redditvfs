@@ -12,6 +12,8 @@ import praw
 import getpass
 import ConfigParser
 import sys
+import urllib2
+import format
 
 fuse.fuse_python_api = (0, 2)
 
@@ -93,6 +95,28 @@ class redditvfs(fuse.Fuse):
         else:
             # everything else is a file
             st.st_mode = stat.S_IFREG | 0444
+
+            if path_split[1] == 'r':
+                # Get the post or comment
+                post_id = path_split[-2].split(' ')[-1]
+                post = reddit.get_submission(submission_id=post_id)
+
+                if path_split[-1] == 'content':
+                    formatted = format.format_sub_content(post)
+                    formatted = formatted.encode('ascii', 'ignore')
+                elif path_split[-1] == 'votes':
+                    # TODO votes information
+                    formatted = ''
+                elif path_split[-1] == 'flat':
+                    formatted = format.format_submission(post)
+                    formatted = formatted.encode('ascii', 'ignore')
+                elif path_split[-1] == 'thumbnail' and post.thumbnail != '' and \
+                        post.thumbnail != 'self':
+                    f = urllib2.urlopen(post.thumbnail)
+                    if f.getcode() == 200:
+                        formatted = f.read()
+                #formatted.encode('ascii', 'ignore')
+                st.st_size = len(formatted)
         return st
 
     def readdir(self, path, offset):
@@ -189,6 +213,37 @@ class redditvfs(fuse.Fuse):
                 # doesn't have any values listed.
                 if reddit.is_logged_in():
                     yield fuse.Direntry(username)
+
+    def read(self, path, size, offset, fh=None):
+        path_split = path.split('/')
+        path_len = len(path_split)
+
+        if path_split[1] == 'r' and path_len >= 4:
+            # Get the post or comment
+            post_id = path_split[-2].split(' ')[-1]
+            post = reddit.get_submission(submission_id=post_id)
+
+            formatted = ''
+            if path_split[-1] == 'content':
+                formatted = format.format_sub_content(post)
+                formatted = formatted.encode('ascii', 'ignore')
+            elif path_split[-1] == 'votes':
+                # TODO votes information
+                pass
+            elif path_split[-1] == 'flat':
+                formatted = format.format_submission(post)
+                formatted = formatted.encode('ascii', 'ignore')
+            elif path_split[-1] == 'thumbnail' and post.thumbnail != '' and \
+                    post.thumbnail != 'self':
+                f = urllib2.urlopen(post.thumbnail)
+                if f.getcode() == 200:
+                    formatted = f.read
+            return formatted[offset:offset+size]
+        if path.split('/')[1] == 'u':
+            # TODO user handling
+            pass
+
+        return -errno.ENOSYS
 
 
 def login_get_username(config):
