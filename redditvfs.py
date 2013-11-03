@@ -203,16 +203,6 @@ class redditvfs(fuse.Fuse):
                 dots += '../'
                 numdots -= 1
             comment_id = path.split(' ')[-1]
-#            sub = str('http://reddit.com/comments/'+comment_id+'.json')
-#            submi = urllib2.urlopen(sub)
-#            time.sleep(1)
-#            z= json.load(submi)
-#            subname=z[0]['data']['children'][0]['data']['subreddit']
-#            filename=z[0]
-#            sub = sub.split('/')
-#            ret = dots + 'r/' + subname + '/'+ sub[4][:-5]
-#            ret = ret.encode('ascii', 'ignore')
-#            return str(ret)
             sub = str('http://www.reddit.com/comments/'+comment_id)
             sub=reddit.get_submission(sub)
             subname = str(sub.subreddit)
