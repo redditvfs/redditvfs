@@ -102,8 +102,8 @@ class redditvfs(fuse.Fuse):
                 post = reddit.get_submission(submission_id=post_id)
 
                 if path_split[-1] == 'content':
-                    # TODO API call for contents
-                    formatted = ''
+                    formatted = format.format_sub_content(post)
+                    formatted = formatted.encode('ascii', 'ignore')
                 elif path_split[-1] == 'votes':
                     # TODO votes information
                     formatted = ''
@@ -218,8 +218,8 @@ class redditvfs(fuse.Fuse):
             post = reddit.get_submission(submission_id=post_id)
 
             if path_split[-1] == 'content':
-                # TODO API call for contents
-                pass
+                formatted = format.format_sub_content(post)
+                formatted = formatted.encode('ascii', 'ignore')
             elif path_split[-1] == 'votes':
                 # TODO votes information
                 pass
