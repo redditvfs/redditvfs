@@ -94,9 +94,19 @@ class redditvfs(fuse.Fuse):
                 yield fuse.Direntry(filename)
         elif len(path.split('/')) == 4 and path.split('/')[1] == 'r':
             # a post in a subreddit
-            post_id = path.split(' ')[-1]
+
+            # get post id.  To make this user-friend it will be appended to
+            # human-readable filenames, but this should work if it is the only
+            # part of the filename as well.  The human-readable part is
+            # dropped.
+            if path.rfind(' ') > path.rfind('/'):
+                post_id = path.split(' ')[-1]
+            else:
+                post_id = path.split('/')[-1]
             post = r.get_submission(submission_id = post_id)
-            # TODO: get thumbnail
+            if post.thumbnail != "":
+                # there is a thumbnail
+                yield fuse.Direntry('thumbnail')
 
 
 def login_get_username(config):
