@@ -333,12 +333,14 @@ class redditvfs(fuse.Fuse):
                 post = reddit.get_submission(submission_id=post_id)
 
             if reddit.is_logged_in() and path_split[-1] == 'votes':
-                if buf == 0:
+                vote = int(buf)
+                if vote == 0:
                     post.clear_vote()
-                elif buf > 0:
+                elif vote > 0:
                     post.upvote()
-                elif buf < 0:
+                elif vote < 0:
                     post.downvote()
+        return len(buf)
 
 def get_comment_obj(path):
     """
