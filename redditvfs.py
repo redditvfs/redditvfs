@@ -109,10 +109,13 @@ class redditvfs(fuse.Fuse):
                     formatted = ''
                 elif path_split[-1] == 'flat':
                     formatted = format.format_submission(post)
+                    formatted = formatted.encode('ascii', 'ignore')
                 elif path_split[-1] == 'thumbnail' and post.thumbnail != '' and \
                         post.thumbnail != 'self':
-                    formatted = '' # TODO: implement thumbnails
-                formatted.encode('ascii', 'ignore')
+                    f = urllib2.urlopen(post.thumbnail)
+                    if f.getcode() == 200:
+                        formatted = f.read()
+                #formatted.encode('ascii', 'ignore')
                 st.st_size = len(formatted)
         return st
 
@@ -226,14 +229,9 @@ class redditvfs(fuse.Fuse):
                 return formatted[offset:offset+size]
             elif path_split[-1] == 'thumbnail' and post.thumbnail != '' and \
                     post.thumbnail != 'self':
-                # TODO Broken does not work. Fix soons
                 f = urllib2.urlopen(post.thumbnail)
                 if f.getcode() == 200:
-                    print 'code 200'
-                    read = f.read().encode('ascii', 'ignore')
-                    print read
-                    # Only return if the file was read
-                    return read[offset:offset+size]
+                    return f.read()[offset:offset+size]
         if path.split('/')[1] == 'u':
             # TODO user handling
             pass
