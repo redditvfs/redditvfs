@@ -16,6 +16,9 @@ def format_sub_content(submission):
     if submission.selftext:
         text += wrap.wrap('\n' + submission.selftext + '\n')
         text.append(br)
+    if submission.url:
+        text += wrap.wrap('\n' + submission.url + '\n')
+        text.append(br)
     d = get_info_dict(submission)
     formatted = "%(author)s %(time)s ago\n"\
     +"%(score)d points (%(ups)d|%(downs)d) id:%(id)s"
