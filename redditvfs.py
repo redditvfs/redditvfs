@@ -254,9 +254,10 @@ class redditvfs(fuse.Fuse):
                 post_id = path_split[3].split(' ')[-1]
                 post = reddit.get_submission(submission_id = post_id)
 
-                yield fuse.Direntry('flat')
-                yield fuse.Direntry('votes')
-                yield fuse.Direntry('content')
+                # vote, content, etc
+                for file in content_stuff:
+                    if file != 'thumbnail':
+                        yield fuse.Direntry(file)
                 yield fuse.Direntry("_Posted_by_" + str(post.author) + "_")
 
                 if post.thumbnail != "" and post.thumbnail != 'self':
