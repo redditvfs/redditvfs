@@ -151,15 +151,14 @@ class redditvfs(fuse.Fuse):
                 if 'body' in dir(reply):
                     yield fuse.Direntry(sanitize_filepath(reply.body[0:pathmax] + ' ' + reply.id))
 
-
-    def read(self, path, length, offset, fh=None):
+    def read(self, path, size, offset, fh=None):
         path_split = path.split('/')
         path_len = len(path_split)
 
         if path_split[1] == 'r' and path_len >= 4:
             # Get the post or comment
             post_id = path_split[-2].split(' ')[-1]
-            post = reddit.get_submission(submission_id = post_id)
+            post = reddit.get_submission(submission_id=post_id)
 
             if path_split[-1] == 'contents':
                 # TODO API call for contents
@@ -168,21 +167,26 @@ class redditvfs(fuse.Fuse):
                 # TODO votes information
                 pass
             elif path_split[-1] == 'flat':
-                return format.format_submission(post)
-            elif path_split[-1] == 'thumbnail' and post.thumbnail != '' and post.thumbnail !='self':
+                formatted = format.format_submission(post)
+                formatted = formatted.encode('ascii', 'ignore')
+                print formatted[offset:offset+size]
+                return formatted[offset:offset+size]
+            elif path_split[-1] == 'thumbnail' and post.thumbnail != '' and \
+                    post.thumbnail != 'self':
                 # TODO Broken does not work. Fix soons
-                f = urllib2.urlopen(post.thumbnail);
+                f = urllib2.urlopen(post.thumbnail)
                 if f.getcode() == 200:
                     print 'code 200'
-                    read = str(f.read())
+                    read = f.read().encode('ascii', 'ignore')
                     print read
                     # Only return if the file was read
-                    return read.encode('ascii')
+                    return read[offset:offset+size]
         if path.split('/')[1] == 'u':
             # TODO user handling
             pass
 
         return -errno.ENOSYS
+
 
 def login_get_username(config):
     """
