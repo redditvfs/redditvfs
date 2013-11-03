@@ -159,9 +159,8 @@ class redditvfs(fuse.Fuse):
             while (numdots > 0):
                 dots+='../'
                 numdots-=1
-            print("TESTESTETET@@@@@@@")
             sub =  get_comment_obj(path).submission()
-            print ("TESTTESTESTETSETETSETSETS " + str(sub.fullname))
+            #TODO fix this into the actual path.
             return path
             #return dots+'r/' +subname + '/'+postname+'/'+path.split('/')[-1:][0]
             
@@ -317,7 +316,7 @@ def get_comment_obj(path):
         if comment.id == path_split[4].split(' ')[-1]:
             break
     level = 4
-    while level < path_len - 2:
+    while level < path_len - 1:
         level += 1
         for comment in comment.replies:
             if comment.id == path_split[level].split(' ')[-1]:
