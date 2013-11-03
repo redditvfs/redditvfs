@@ -94,7 +94,12 @@ class redditvfs(fuse.Fuse):
 
         # r/*/* - submissions
         if path_split[1] == 'r' and path_len == 4:
-            st.st_mode = stat.S_IFDIR | 0555
+            if path_split[-1] == 'post':
+                # file to post a submission
+                st.st_mode = stat.S_IFREG | 0666
+            else:
+                # submission
+                st.st_mode = stat.S_IFDIR | 0555
             return st
 
         # r/*/*/[vote, etc] - content stuff in submission
@@ -239,6 +244,8 @@ class redditvfs(fuse.Fuse):
                     filename = sanitize_filepath(post.title[0:pathmax]
                             + ' ' + post.id)
                     yield fuse.Direntry(filename)
+                # write to this to create a new post
+                yield fuse.Direntry('post')
             elif path_len == 4:
                 # a submission in a subreddit
 
