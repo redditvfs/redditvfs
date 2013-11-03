@@ -89,12 +89,28 @@ class redditvfs(fuse.Fuse):
             st.st_mode = stat.S_IFDIR | 0444
         elif (path_split[1] == 'r' and path_len > 4 and path_split[-1] not in
                 ['thumbnail', 'flat', 'votes', 'content']):
-            # comment post
-            st.st_mode = stat.S_IFDIR | 0444
+            # comment post or user link
+            if path.split('/')[-1:][0][-1:] == '_':
+                #symlink
+                st.st_mode = stat.S_IFLNK | 0444
+            else:
+                st.st_mode = stat.S_IFDIR | 0444
+            
         else:
             # everything else is a file
             st.st_mode = stat.S_IFREG | 0444
         return st
+
+    def readlink(self, path):
+        numdots = len(path.split('/'))-2
+        dots=''
+        print "TEST TEST TSET: " + str(numdots)
+        if path.split('/')[-1:][0][-1:] == '_' and len(path.split('/'))>=5:
+            #if this is a userlink
+            while (numdots>0):
+                dots+='../'
+                numdots-=1
+            return dots+'u/'+path.split('/')[-1:][0][11:-1]
 
     def readdir(self, path, offset):
         """
@@ -146,7 +162,8 @@ class redditvfs(fuse.Fuse):
                 yield fuse.Direntry('flat')
                 yield fuse.Direntry('votes')
                 yield fuse.Direntry('content')
-
+                yield fuse.Direntry("_Posted_by_"+str(post.author)+"_")
+                
                 if post.thumbnail != "" and post.thumbnail != 'self':
                     # there is a thumbnail
                     yield fuse.Direntry('thumbnail')
@@ -157,7 +174,7 @@ class redditvfs(fuse.Fuse):
                                 sanitize_filepath(comment.body[0:pathmax]
                                     + ' ' + comment.id))
             elif len(path.split('/')) > 4:
-                # a comment
+                # a comment or a user
 
                 # Can't find a good way to get a comment from an id, but there
                 # is a good way to get a submission from the id and to walk
@@ -169,6 +186,8 @@ class redditvfs(fuse.Fuse):
                 yield fuse.Direntry('flat')
                 yield fuse.Direntry('votes')
                 yield fuse.Direntry('content')
+                yield fuse.Direntry('_Posted_by_' + str(post.author)+'_')
+
 
                 for comment in post.comments:
                     if comment.id == path_split[4].split(' ')[-1]:
