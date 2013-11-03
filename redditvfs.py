@@ -107,7 +107,7 @@ class redditvfs(fuse.Fuse):
                 content_stuff):
             st.st_mode = stat.S_IFREG | 0444
             post_id = path_split[3].split(' ')[-1]
-            post = reddit.get_submission(submission_id = post_id)
+            post = reddit.get_submission(submission_id=post_id)
             formatted = ''
             if path_split[-1] == 'content':
                 formatted = format.format_sub_content(post)
@@ -181,26 +181,26 @@ class redditvfs(fuse.Fuse):
 
     def readlink(self, path):
         numdots = len(path.split('/'))
-        dots=''
-        if path.split('/')[-1:][0][-1:] == '_' and len(path.split('/'))>=5:
+        dots = ''
+        if path.split('/')[-1:][0][-1:] == '_' and len(path.split('/')) >= 5:
             #if this is a userlink
-            numdots-=2
-            while (numdots>0):
-                dots+='../'
-                numdots-=1
-            return dots+'u/'+path.split('/')[-1:][0][11:-1]
-        if path.split('/')[1] == 'u' and len(path.split('/')) == 5:
-            numdots-=2
+            numdots -= 2
             while (numdots > 0):
-                dots+='../'
-                numdots-=1
+                dots += '../'
+                numdots -= 1
+            return dots + 'u/' + path.split('/')[-1:][0][11:-1]
+        if path.split('/')[1] == 'u' and len(path.split('/')) == 5:
+            numdots -= 2
+            while (numdots > 0):
+                dots += '../'
+                numdots -= 1
             comment_id = path.split(' ')[-1]
             test = 'http://redd.it/'+comment_id
             sub = urllib2.urlopen(str(test))
             sub = sub.geturl()
             sub = sub.split('/')
-            return dots+'r/' +sub[4] + '/'+sanitize_filepath(sub[7])+'/'+sub[6]
-
+            return dots + 'r/' + sub[4] + '/' + sanitize_filepath(sub[7]) +\
+                '/' + sub[6]
 
     def readdir(self, path, offset):
         """
@@ -230,11 +230,13 @@ class redditvfs(fuse.Fuse):
                 # falling back to get_popular_subreddits
                 if reddit.is_logged_in():
                     for subreddit in reddit.get_my_subreddits():
-                        dirname = sanitize_filepath(subreddit.url.split('/')[2])
+                        url_part = subreddit.url.split('/')[2]
+                        dirname = sanitize_filepath(url_part)
                         yield fuse.Direntry(dirname)
                 else:
                     for subreddit in reddit.get_popular_subreddits():
-                        dirname = sanitize_filepath(subreddit.url.split('/')[2])
+                        url_part = subreddit.url.split('/')[2]
+                        dirname = sanitize_filepath(url_part)
                         yield fuse.Direntry(dirname)
             elif path_len == 3:
                 # posts in subreddits
@@ -242,7 +244,7 @@ class redditvfs(fuse.Fuse):
                 # TODO: maybe not hardcode limit?
                 for post in reddit.get_subreddit(subreddit).get_hot(limit=20):
                     filename = sanitize_filepath(post.title[0:pathmax]
-                            + ' ' + post.id)
+                                                 + ' ' + post.id)
                     yield fuse.Direntry(filename)
                 # write to this to create a new post
                 yield fuse.Direntry('post')
@@ -250,7 +252,7 @@ class redditvfs(fuse.Fuse):
                 # a submission in a subreddit
 
                 post_id = path_split[3].split(' ')[-1]
-                post = reddit.get_submission(submission_id = post_id)
+                post = reddit.get_submission(submission_id=post_id)
 
                 # vote, content, etc
                 for file in content_stuff:
@@ -265,8 +267,8 @@ class redditvfs(fuse.Fuse):
                 for comment in post.comments:
                     if 'body' in dir(comment):
                         yield fuse.Direntry(
-                                sanitize_filepath(comment.body[0:pathmax]
-                                    + ' ' + comment.id))
+                            sanitize_filepath(comment.body[0:pathmax]
+                                              + ' ' + comment.id))
             elif len(path.split('/')) > 4:
                 # a comment or a user
 
@@ -284,8 +286,8 @@ class redditvfs(fuse.Fuse):
                 for reply in comment.replies:
                     if 'body' in dir(reply):
                         yield fuse.Direntry(
-                                sanitize_filepath(reply.body[0:pathmax]
-                                    + ' ' + reply.id))
+                            sanitize_filepath(reply.body[0:pathmax]
+                                              + ' ' + reply.id))
         elif path_split[1] == 'u':
             if path_len == 2:
                 # if user is logged in, show the user.  Otherwise, this empty
@@ -300,16 +302,19 @@ class redditvfs(fuse.Fuse):
                 user = reddit.get_redditor(path_split[2])
                 if path_split[3] == 'Overview':
                     for c in enumerate(user.get_overview(limit=10)):
-                        yield fuse.Direntry(sanitize_filepath(c[1].body[0:pathmax]
-                            + ' ' + c[1].submission.id))
+                        c_part = c[1].body[0:pathmax] + ' ' +\
+                            c[1].submission.id
+                        yield fuse.Direntry(sanitize_filepath(c_part))
                 elif path_split[3] == 'Submitted':
                     for c in enumerate(user.get_submitted(limit=10)):
-                        yield fuse.Direntry(sanitize_filepath(c[1].body[0:pathmax]
-                            + ' ' + c[1].submission().id))
+                        c_part = c[1].body[0:pathmax] + ' ' +\
+                            c[1].submission().id
+                        yield fuse.Direntry(sanitize_filepath(c_part))
                 elif path_split[3] == 'Comments':
                     for c in enumerate(user.get_comments(limit=10)):
-                        yield fuse.Direntry(sanitize_filepath(c[1].body[0:pathmax]
-                            + ' ' + c[1].submission().id))
+                        c_part = c[1].body[0:pathmax] + ' ' +\
+                            c[1].submission().id
+                        yield fuse.Direntry(sanitize_filepath(c_part))
 
     def read(self, path, size, offset, fh=None):
         path_split = path.split('/')
@@ -318,7 +323,7 @@ class redditvfs(fuse.Fuse):
         if path_split[1] == 'r' and path_len == 5:
             # Get the post
             post_id = path_split[3].split(' ')[-1]
-            post = reddit.get_submission(submission_id = post_id)
+            post = reddit.get_submission(submission_id=post_id)
 
             formatted = ''
             if path_split[-1] == 'content':
@@ -370,7 +375,8 @@ class redditvfs(fuse.Fuse):
         path_len = len(path_split)
 
         # Voting
-        if path_split[1] == 'r' and path_len >= 5 and path_split[-1] == 'votes':
+        if path_split[1] == 'r' and path_len >= 5 and\
+                path_split[-1] == 'votes':
             # Get the post or comment
             if path_len > 5:
                 post = get_comment_obj(path)
@@ -414,11 +420,11 @@ class redditvfs(fuse.Fuse):
                 reddit.submit(subreddit=path_split[2], title=title, text=text)
             else:
                 # Link
-                reddit.submit(subreddit=path_split[2], title=title,\
-                    url=buf_split[1])
+                reddit.submit(subreddit=path_split[2], title=title,
+                              url=buf_split[1])
             return len(buf)
 
-        # fake success for editor's backup files        
+        # fake success for editor's backup files
         return len(buf)
 
     def create(self, path, flags, mode):
@@ -447,7 +453,7 @@ def get_comment_obj(path):
     path_split = path.split('/')
     path_len = len(path_split)
     post_id = path_split[3].split(' ')[-1]
-    post = reddit.get_submission(submission_id = post_id)
+    post = reddit.get_submission(submission_id=post_id)
     for comment in post.comments:
         if comment.id == path_split[4].split(' ')[-1]:
             break
@@ -462,6 +468,7 @@ def get_comment_obj(path):
             if comment.id == path_split[level].split(' ')[-1]:
                 break
     return comment
+
 
 def login_get_username(config):
     """
