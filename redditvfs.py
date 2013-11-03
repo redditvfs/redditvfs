@@ -196,12 +196,12 @@ class redditvfs(fuse.Fuse):
             while (numdots > 0):
                 dots+='../'
                 numdots-=1
-            print('TESTESTSETSETSETSETSET')
-            sub =  get_comment_obj(path).submission()
-            #TODO fix this into the actual path.
-            print(str(sub.fullname))
-            return path
-            #return dots+'r/' +subname + '/'+postname+'/'+path.split('/')[-1:][0]
+            comment_id = path.split(' ')[-1]
+            test = 'http://redd.it/'+comment_id
+            sub = urllib2.urlopen(str(test))
+            sub = sub.geturl()
+            sub = sub.split('/')
+            return dots+'r/' +sub[4] + '/'+sanitize_filepath(sub[7])+'/'+sub[6]
 
 
     def readdir(self, path, offset):
@@ -300,15 +300,15 @@ class redditvfs(fuse.Fuse):
                 if path_split[3] == 'Overview':
                     for c in enumerate(user.get_overview(limit=10)):
                         yield fuse.Direntry(sanitize_filepath(c[1].body[0:pathmax]
-                            + ' ' + c[1].id))
+                            + ' ' + c[1].submission.id))
                 elif path_split[3] == 'Submitted':
                     for c in enumerate(user.get_submitted(limit=10)):
                         yield fuse.Direntry(sanitize_filepath(c[1].body[0:pathmax]
-                            + ' ' + c[1].id))
+                            + ' ' + c[1].submission().id))
                 elif path_split[3] == 'Comments':
                     for c in enumerate(user.get_comments(limit=10)):
                         yield fuse.Direntry(sanitize_filepath(c[1].body[0:pathmax]
-                            + ' ' + c[1].id))
+                            + ' ' + c[1].submission().id))
 
     def read(self, path, size, offset, fh=None):
         path_split = path.split('/')
