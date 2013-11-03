@@ -371,10 +371,6 @@ class redditvfs(fuse.Fuse):
         path_split = path.split('/')
         path_len = len(path_split)
 
-        # ignore files created by editors and .* files
-        if path_split[-1][0] == '.' or path_split[-1][-1] == '~':
-            return errno.EPERM
-
         # Voting
         if path_split[1] == 'r' and path_len >= 5 and path_split[-1] == 'votes':
             # Get the post or comment
@@ -396,13 +392,24 @@ class redditvfs(fuse.Fuse):
 
         # Reply to submission
         if path_split[1] == 'r' and path_len == 5 and\
-                path_split[-1] not in content_stuff:
+                path_split[-1] == 'reply':
             post_id = path_split[-2].split(' ')[-1]
             post = reddit.get_submission(submission_id=post_id)
             post.add_comment(buf)
             return len(buf)
-        
-        return 0
+
+        # Reply to comments
+        if path_split[1] == 'r' and path_len > 5 and\
+                path_split[-1] == 'reply':
+            post = get_comment_obj(path)
+            post.reply(buf)
+            return len(buf)
+
+        # fake success for editor's backup files        
+        return len(buf)
+
+    def create(self, path, flags, mode):
+        return errno.EPERM
 
 def get_comment_obj(path):
     """
