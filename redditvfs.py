@@ -103,7 +103,8 @@ class redditvfs(fuse.Fuse):
             elif path_split[-1] == 'flat':
                 # TODO votes information
                 formatted = ''
-            elif path_split[-1] == 'thumbnail' and post.thumbnail != '' and post.thumbnail != 'self':
+            elif (path_split[-1] == 'thumbnail' and post.thumbnail != '' and
+                    post.thumbnail != 'self'):
                 f = urllib2.urlopen(post.thumbnail)
                 if f.getcode() == 200:
                     formatted = f.read()
@@ -232,8 +233,7 @@ class redditvfs(fuse.Fuse):
                 formatted = format.format_sub_content(post)
                 formatted = formatted.encode('ascii', 'ignore')
             elif path_split[-1] == 'votes':
-                # TODO votes information
-                pass
+                formatted = str(post.score) + '\n'
             elif path_split[-1] == 'flat':
                 formatted = format.format_submission(post)
                 formatted = formatted.encode('ascii', 'ignore')

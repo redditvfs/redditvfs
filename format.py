@@ -3,22 +3,31 @@ import textwrap
 import time
 import codecs
 
-wrapper = textwrap.TextWrapper()
+
 def format_sub_content(submission):
     """return formatted submission without comments as a String"""
     text = []
-    text.append(submission.title)
-    d = get_info_dict(submission)    
+    indent = 3
+    wrap = textwrap.TextWrapper(initial_indent=indent*' '+'|', subsequent_indent=indent*' '+'|')
+    br = indent * ' ' + '-' * (79-indent)
+    text.append(br)
+    text += wrap.wrap(submission.title)
+    text.append(br)
+    if post.selftext:
+        text += wrap.wrap('\n' + submission.selftext + '\n')
+        text.append(br)
+    d = get_info_dict(submission)
     formatted = "%(author)s %(time)s ago\n"\
     +"%(score)d points (%(ups)d|%(downs)d) id:%(id)s"
-    text.append(formatted % d)
-    return '\n'.join(text)
+    text += wrap.wrap(formatted % d)
+    text.append(br)
+    return '\n'.join(text)+'\n'
 
 def format_submission(submission):
     """return formatted submission and all comments as [String]"""
     text = [format_sub_content(submission)] +\
              ['\n'.join(format_comment(c)) for c in submission.comments]
-    return '\n'.join(text)
+    return '\n'.join(text)+'\n'
 
 def get_info_dict(comsub):
     d = {}
@@ -29,7 +38,6 @@ def get_info_dict(comsub):
     d['downs'] = comsub.downs
     d['id'] = comsub.id
     return d
-    " (%(ups)d|%(downs)d) id:%(id)s" % d
 
 def format_comment(comment, depth=0):
     """returns formatted comment + children as a [String]""" 
@@ -74,5 +82,5 @@ if __name__=='__main__':
     posts = [post for post in sub.get_top(limit=1)]   
     with codecs.open('out.txt', mode='w',encoding='utf-8') as f:
         for post in posts:
-            lines = format_submission(post) 
-            f.write(lines)
+            lines = format_sub_content(post) 
+            print lines 
